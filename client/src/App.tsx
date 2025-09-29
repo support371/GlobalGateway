@@ -39,9 +39,13 @@ import Partners from "@/pages/about/Partners";
 
 // Contact pages
 import Contact from "@/pages/contact/Contact";
-import General from "@/pages/contact/General";
-import Offices from "@/pages/contact/Offices";
-import Support from "@/pages/contact/Support";
+import ContactGeneral from "./pages/contact/General";
+import ContactOffices from "./pages/contact/Offices";
+import ContactSupport from "./pages/contact/Support";
+
+// Payment pages
+import PaymentMethods from "./pages/payments/PaymentMethods";
+import PaymentHistory from "./pages/payments/PaymentHistory";
 
 // Dashboard pages
 import UserDashboard from "@/pages/dashboard/UserDashboard";
@@ -75,9 +79,9 @@ function Router() {
           <Route path="/about/global-footprint" component={GlobalFootprint} />
           <Route path="/about/partners" component={Partners} />
           <Route path="/contact" component={Contact} />
-          <Route path="/contact/general" component={General} />
-          <Route path="/contact/offices" component={Offices} />
-          <Route path="/contact/support" component={Support} />
+          <Route path="/contact/general" component={ContactGeneral} />
+          <Route path="/contact/support" component={ContactSupport} />
+          <Route path="/contact/offices" component={ContactOffices} />
         </>
       ) : (
         <Layout>
@@ -105,9 +109,11 @@ function Router() {
           <Route path="/about/global-footprint" component={GlobalFootprint} />
           <Route path="/about/partners" component={Partners} />
           <Route path="/contact" component={Contact} />
-          <Route path="/contact/general" component={General} />
-          <Route path="/contact/offices" component={Offices} />
-          <Route path="/contact/support" component={Support} />
+          <Route path="/contact/general" component={ContactGeneral} />
+          <Route path="/contact/support" component={ContactSupport} />
+          <Route path="/contact/offices" component={ContactOffices} />
+          <Route path="/payments" component={PaymentMethods} />
+          <Route path="/payments/history" component={PaymentHistory} />
           <Route path="/auth/account-dashboard" component={UserDashboard} />
           <Route path="/admin/dashboard" component={AdminDashboard} />
         </Layout>
