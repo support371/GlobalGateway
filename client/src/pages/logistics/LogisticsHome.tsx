@@ -20,18 +20,21 @@ export default function LogisticsHome() {
           Ship with confidence worldwide. Our comprehensive logistics network ensures your packages reach their destination safely and on time.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/logistics/shipping-calculator">
-            <Button size="lg" data-testid="button-calculate-shipping">
-              <Calculator className="mr-2 h-5 w-5" />
-              Calculate Shipping
-            </Button>
-          </Link>
-          <Link href="/logistics/book-shipping">
-            <Button variant="outline" size="lg" data-testid="button-book-now">
-              <Package className="mr-2 h-5 w-5" />
-              Book Now
-            </Button>
-          </Link>
+          <Button size="lg" asChild>
+                <Link href="/logistics/usps-services">
+                  <Package className="mr-2 h-5 w-5" />
+                  USPS Services
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild>
+                <Link href="/logistics/shipping-calculator">
+                  <Calculator className="mr-2 h-5 w-5" />
+                  Calculate Shipping
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild>
+                <Link href="/logistics/book-shipping">Book Now</Link>
+              </Button>
         </div>
       </div>
 

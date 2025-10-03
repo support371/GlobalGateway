@@ -15,6 +15,7 @@ import ShippingCalculator from "@/pages/logistics/ShippingCalculator";
 import BookShipping from "@/pages/logistics/BookShipping";
 import Tracking from "@/pages/logistics/Tracking";
 import FAQ from "@/pages/logistics/FAQ";
+import USPSServices from "@/pages/logistics/USPSServices";
 
 // Real Estate pages
 import RealEstateHome from "@/pages/real-estate/RealEstateHome";
@@ -61,6 +62,7 @@ function Router() {
           <Route path="/" component={Landing} />
           {/* Public routes for non-authenticated users */}
           <Route path="/logistics" component={LogisticsHome} />
+          <Route path="/logistics/usps-services" component={USPSServices} />
           <Route path="/logistics/shipping-calculator" component={ShippingCalculator} />
           <Route path="/logistics/tracking" component={Tracking} />
           <Route path="/logistics/faq" component={FAQ} />
@@ -88,6 +90,7 @@ function Router() {
           <Route path="/" component={Home} />
           {/* Authenticated routes */}
           <Route path="/logistics" component={LogisticsHome} />
+          <Route path="/logistics/usps-services" component={USPSServices} />
           <Route path="/logistics/shipping-calculator" component={ShippingCalculator} />
           <Route path="/logistics/book-shipping" component={BookShipping} />
           <Route path="/logistics/tracking" component={Tracking} />
