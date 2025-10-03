@@ -63,7 +63,7 @@ export default function Footer() {
               <li><Link href="/contact/support" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-help">Help Center</Link></li>
               <li><Link href="/logistics/faq" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-faq">FAQ</Link></li>
               <li><Link href="/auth/account-dashboard" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-dashboard">Account Dashboard</Link></li>
-              <li><Link href="#" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-privacy">Privacy Policy</Link></li>
+              <li><Link href="/legal/privacy-policy" className="text-muted-foreground hover:text-primary transition-colors" data-testid="footer-link-privacy">Privacy Policy</Link></li>
             </ul>
           </div>
         </div>
@@ -73,9 +73,9 @@ export default function Footer() {
             © 2024 Global Business Gateway. All rights reserved.
           </p>
           <div className="flex space-x-6">
-            <Link href="#" className="text-muted-foreground hover:text-primary transition-colors text-sm" data-testid="footer-link-terms">Terms of Service</Link>
-            <Link href="#" className="text-muted-foreground hover:text-primary transition-colors text-sm" data-testid="footer-link-privacy-policy">Privacy Policy</Link>
-            <Link href="#" className="text-muted-foreground hover:text-primary transition-colors text-sm" data-testid="footer-link-gdpr">GDPR Compliance</Link>
+            <Link href="/legal/terms-of-service" className="text-muted-foreground hover:text-primary transition-colors text-sm" data-testid="footer-link-terms">Terms of Service</Link>
+            <Link href="/legal/privacy-policy" className="text-muted-foreground hover:text-primary transition-colors text-sm" data-testid="footer-link-privacy-policy">Privacy Policy</Link>
+            <Link href="/legal-services/digital-compliance" className="text-muted-foreground hover:text-primary transition-colors text-sm" data-testid="footer-link-gdpr">GDPR Compliance</Link>
           </div>
         </div>
       </div>
