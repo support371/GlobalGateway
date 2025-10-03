@@ -16,6 +16,7 @@ export default function Header() {
     { name: "Legal Services", href: "/legal-services", icon: Scale },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
+    { name: "Payments", href: "/payments" }, // Added Payments link
   ];
 
   const isActive = (href: string) => {
@@ -43,8 +44,8 @@ export default function Header() {
             {navigation.map((item) => {
               const Icon = item.icon;
               return (
-                <Link 
-                  key={item.name} 
+                <Link
+                  key={item.name}
                   href={item.href}
                   className={`flex items-center space-x-2 text-foreground hover:text-primary transition-colors font-medium ${
                     isActive(item.href) ? "text-primary" : ""
@@ -97,15 +98,15 @@ export default function Header() {
               </DropdownMenu>
             ) : (
               <>
-                <a 
-                  href="/api/login" 
+                <a
+                  href="/api/login"
                   className="text-foreground hover:text-primary transition-colors font-medium"
                   data-testid="link-login"
                 >
                   Login
                 </a>
-                <a 
-                  href="/api/login" 
+                <a
+                  href="/api/login"
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md transition-colors font-medium"
                   data-testid="button-get-started"
                 >
@@ -127,8 +128,8 @@ export default function Header() {
                 {navigation.map((item) => {
                   const Icon = item.icon;
                   return (
-                    <Link 
-                      key={item.name} 
+                    <Link
+                      key={item.name}
                       href={item.href}
                       className={`flex items-center space-x-2 text-foreground hover:text-primary transition-colors font-medium ${
                         isActive(item.href) ? "text-primary" : ""
@@ -142,7 +143,7 @@ export default function Header() {
                 })}
                 {isAuthenticated && user ? (
                   <>
-                    <Link 
+                    <Link
                       href="/auth/account-dashboard"
                       className="flex items-center space-x-2 text-foreground hover:text-primary transition-colors font-medium"
                       data-testid="mobile-link-dashboard"
@@ -150,7 +151,7 @@ export default function Header() {
                       <User className="h-4 w-4" />
                       <span>Dashboard</span>
                     </Link>
-                    <a 
+                    <a
                       href="/api/logout"
                       className="flex items-center space-x-2 text-foreground hover:text-primary transition-colors font-medium"
                       data-testid="mobile-link-logout"
@@ -161,14 +162,14 @@ export default function Header() {
                   </>
                 ) : (
                   <>
-                    <a 
+                    <a
                       href="/api/login"
                       className="text-foreground hover:text-primary transition-colors font-medium"
                       data-testid="mobile-link-login"
                     >
                       Login
                     </a>
-                    <a 
+                    <a
                       href="/api/login"
                       className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md transition-colors font-medium text-center"
                       data-testid="mobile-button-get-started"

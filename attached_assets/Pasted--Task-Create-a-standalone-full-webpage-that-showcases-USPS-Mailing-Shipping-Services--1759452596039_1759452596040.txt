@@ -1,0 +1,47 @@
+*Task:** 
+Create a **standalone full webpage** that showcases **USPS Mailing & Shipping Services** branded under the **Holistic Real Estate** account, operating as part of its **Logistics and Health–Wealth–Wellness Solutions** framework, inspired by the lifestyle concept of *“Living Life @300%.”*
+
+**Page Requirements:**
+
+1. **Header Section**
+
+   * Title: “Holistic Real Estate Logistics – Global Mailing & Shipping Services”
+   * Subtext: “Part of our Health–Wealth–Wellness Solutions, empowering communities to live life @300%.”
+   * Banner: A modern professional image (e.g., globe, delivery trucks, wellness theme overlay).
+
+2. **USPS Mailing & Shipping Services**
+   Present the offerings in a structured way, modeled on USPS:
+
+   * Domestic & International Shipping
+   * Express Priority & Overnight Mail
+   * Tracking & Delivery Confirmation
+   * Package Insurance & Certified Mail
+   * P.O. Boxes & Forwarding Services
+   * Flat-Rate Shipping Options
+   * Business Mailing Solutions (bulk mail, return labels, logistics support)
+
+3. **Global Freelancer & Agent Services**
+
+   * Emphasize how freelancers and virtual assistants can leverage these services to send/receive documents, contracts, or wellness-related products worldwide.
+   * Highlight unique selling points: *“Affordable Global Rates,” “Secure & Reliable,” “Integrated into Health–Wealth–Wellness Systems.”*
+
+4. **Career Opportunities Section**
+
+   * Title: “Build a Career with Holistic Real Estate Logistics”
+   * Copy: Invite users to apply as freelance agents, logistics partners, or assistants in the growing health–wealth–wellness ecosystem.
+   * Button: “Apply Now” (placeholder link: `#apply`)
+
+5. **Call-to-Action Footer**
+
+   * Text: “Ship Smarter. Work Smarter. Live Smarter — @300%.”
+   * Contact placeholders (email, phone)
+   * Quick links: “Ship a Package,” “Track Shipment,” “Start a Career”
+
+**Design Notes:**
+
+* Color scheme: USPS-inspired (red, white, navy blue) with a **holistic accent** (soft greens or gold).
+* Modern, responsive layout (desktop + mobile).
+* Integrate **Holistic Real Estate branding** throughout.
+
+**Output:**
+Generate this page in clean HTML/CSS (Tailwind preferred, Bootstrap acceptable).
