@@ -25,12 +25,20 @@ const getOidcConfig = memoize(
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
+  
+  // Use pooled connection URL for better reliability
+  const dbUrl = process.env.DATABASE_URL?.replace('.us-east-2', '-pooler.us-east-2') || process.env.DATABASE_URL;
+  
   const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
+    conString: dbUrl,
     createTableIfMissing: false,
     ttl: sessionTtl,
     tableName: "sessions",
+    errorLog: (err: Error) => {
+      console.error('Session store error:', err.message);
+    },
   });
+  
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
