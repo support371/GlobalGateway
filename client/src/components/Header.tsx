@@ -16,7 +16,7 @@ export default function Header() {
     { name: "Legal Services", href: "/legal-services", icon: Scale },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
-    { name: "Payments", href: "/payments" }, // Added Payments link
+    { name: "Payments", href: "/payments" },
   ];
 
   const isActive = (href: string) => {
