@@ -191,9 +191,10 @@ export default function BookShipping() {
                       <FormItem>
                         <FormLabel>Dimensions (L x W x H cm)</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="e.g., 30 x 20 x 15" 
-                            {...field} 
+                          <Input
+                            placeholder="e.g., 30 x 20 x 15"
+                            {...field}
+                            value={field.value ?? undefined}
                             data-testid="input-dimensions"
                           />
                         </FormControl>
@@ -211,7 +212,7 @@ export default function BookShipping() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Service Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
                           <FormControl>
                             <SelectTrigger data-testid="select-service">
                               <SelectValue placeholder="Select service" />

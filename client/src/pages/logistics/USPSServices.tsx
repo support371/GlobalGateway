@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
   Select,
@@ -14,24 +14,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 
-// Mock USPSServices
-const USPSServices = [
+// USPS service options
+const USPSServiceOptions = [
   { id: 'priority', name: 'Priority Mail' },
   { id: 'express', name: 'Express Mail' },
   { id: 'first_class', name: 'First-Class Mail' },
   { id: 'parcel_select', name: 'Parcel Select' },
 ];
 
-// Mock PaymentMethods component (assuming it was causing issues)
+interface ShipmentFormData {
+  fromName: string;
+  fromZip: string;
+  toName: string;
+  toZip: string;
+  weight: number;
+}
+
+interface ShipmentDetails extends ShipmentFormData {
+  service: string | undefined;
+  insurance: boolean;
+  totalCost: number;
+}
+
+// Mock PaymentMethods component
 const PaymentMethods = () => {
   return (
     <Card>
@@ -64,19 +70,41 @@ const PaymentMethods = () => {
   );
 };
 
+const calculateShippingCost = (weight: number, service: string, insurance: boolean): number => {
+  let baseCost = 0;
+  switch (service) {
+    case 'priority':
+      baseCost = 5.0;
+      break;
+    case 'express':
+      baseCost = 10.0;
+      break;
+    case 'first_class':
+      baseCost = 3.0;
+      break;
+    case 'parcel_select':
+      baseCost = 4.0;
+      break;
+    default:
+      baseCost = 5.0;
+  }
+  const weightCost = weight * 0.5;
+  const insuranceCost = insurance ? 2.5 : 0;
+  return baseCost + weightCost + insuranceCost;
+};
+
 const ShippingForm = () => {
   const {
     handleSubmit,
     control,
     formState: { errors },
-  } = useForm();
+  } = useForm<ShipmentFormData>();
   const [shippingService, setShippingService] = useState('');
   const [isInsuranceSelected, setIsInsuranceSelected] = useState(false);
-  const [shipmentDetails, setShipmentDetails] = useState(null);
-  const [error, setError] = useState(null);
+  const [shipmentDetails, setShipmentDetails] = useState<ShipmentDetails | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = (data) => {
-    console.log('Form Data:', data);
+  const onSubmit = (data: ShipmentFormData) => {
     // Simulate API call
     setTimeout(() => {
       if (data.weight > 150) {
@@ -85,36 +113,13 @@ const ShippingForm = () => {
       } else {
         setShipmentDetails({
           ...data,
-          service: USPSServices.find((s) => s.id === shippingService)?.name,
+          service: USPSServiceOptions.find((s) => s.id === shippingService)?.name,
           insurance: isInsuranceSelected,
           totalCost: calculateShippingCost(data.weight, shippingService, isInsuranceSelected),
         });
         setError(null);
       }
     }, 1000);
-  };
-
-  const calculateShippingCost = (weight, service, insurance) => {
-    let baseCost = 0;
-    switch (service) {
-      case 'priority':
-        baseCost = 5.0;
-        break;
-      case 'express':
-        baseCost = 10.0;
-        break;
-      case 'first_class':
-        baseCost = 3.0;
-        break;
-      case 'parcel_select':
-        baseCost = 4.0;
-        break;
-      default:
-        baseCost = 5.0;
-    }
-    const weightCost = weight * 0.5;
-    const insuranceCost = insurance ? 2.5 : 0;
-    return baseCost + weightCost + insuranceCost;
   };
 
   return (
@@ -289,7 +294,7 @@ const ShippingForm = () => {
                     <SelectValue placeholder="Select service" />
                   </SelectTrigger>
                   <SelectContent>
-                    {USPSServices.map((service) => (
+                    {USPSServiceOptions.map((service) => (
                       <SelectItem key={service.id} value={service.id}>
                         {service.name}
                       </SelectItem>
@@ -303,7 +308,7 @@ const ShippingForm = () => {
                 <Checkbox
                   id="insurance"
                   checked={isInsuranceSelected}
-                  onCheckedChange={setIsInsuranceSelected}
+                  onCheckedChange={(checked) => setIsInsuranceSelected(checked === true)}
                 />
                 <Label htmlFor="insurance">Add Shipping Insurance (+$2.50)</Label>
               </div>

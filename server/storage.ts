@@ -16,7 +16,7 @@ import {
   type InsertLegalRequest,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, ilike, or } from "drizzle-orm";
+import { eq, desc, and, ilike, or, sql } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -140,13 +140,12 @@ export class DatabaseStorage implements IStorage {
 
   // Shipment operations
   async getShipments(userId?: string): Promise<Shipment[]> {
-    let query = db.select().from(shipments);
-    
     if (userId) {
-      query = query.where(eq(shipments.userId, userId));
+      return await db.select().from(shipments)
+        .where(eq(shipments.userId, userId))
+        .orderBy(desc(shipments.createdAt));
     }
-    
-    return await query.orderBy(desc(shipments.createdAt));
+    return await db.select().from(shipments).orderBy(desc(shipments.createdAt));
   }
 
   async getShipment(id: string): Promise<Shipment | undefined> {
@@ -180,13 +179,12 @@ export class DatabaseStorage implements IStorage {
 
   // Lease request operations
   async getLeaseRequests(userId?: string): Promise<LeaseRequest[]> {
-    let query = db.select().from(leaseRequests);
-    
     if (userId) {
-      query = query.where(eq(leaseRequests.userId, userId));
+      return await db.select().from(leaseRequests)
+        .where(eq(leaseRequests.userId, userId))
+        .orderBy(desc(leaseRequests.createdAt));
     }
-    
-    return await query.orderBy(desc(leaseRequests.createdAt));
+    return await db.select().from(leaseRequests).orderBy(desc(leaseRequests.createdAt));
   }
 
   async createLeaseRequest(request: InsertLeaseRequest): Promise<LeaseRequest> {
@@ -205,13 +203,12 @@ export class DatabaseStorage implements IStorage {
 
   // Legal request operations
   async getLegalRequests(userId?: string): Promise<LegalRequest[]> {
-    let query = db.select().from(legalRequests);
-    
     if (userId) {
-      query = query.where(eq(legalRequests.userId, userId));
+      return await db.select().from(legalRequests)
+        .where(eq(legalRequests.userId, userId))
+        .orderBy(desc(legalRequests.createdAt));
     }
-    
-    return await query.orderBy(desc(legalRequests.createdAt));
+    return await db.select().from(legalRequests).orderBy(desc(legalRequests.createdAt));
   }
 
   async createLegalRequest(request: InsertLegalRequest): Promise<LegalRequest> {

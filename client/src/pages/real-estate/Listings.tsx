@@ -251,7 +251,7 @@ export default function Listings() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center text-primary font-semibold" data-testid={`text-price-${property.id}`}>
                       <DollarSign className="mr-1 h-4 w-4" />
-                      {formatPrice(property.price, property.currency)}/month
+                      {formatPrice(property.price, property.currency ?? undefined)}/month
                     </div>
                     <div className="flex items-center text-muted-foreground text-sm" data-testid={`text-size-${property.id}`}>
                       <Square className="mr-1 h-4 w-4" />

@@ -121,6 +121,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/shipments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const updated = await storage.updateShipment(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating shipment:", error);
+      res.status(500).json({ message: "Failed to update shipment" });
+    }
+  });
+
   app.post('/api/shipments/calculate', async (req, res) => {
     try {
       const { origin, destination, weight, service } = req.body;
@@ -198,6 +213,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/lease-requests/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const updated = await storage.updateLeaseRequest(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating lease request:", error);
+      res.status(500).json({ message: "Failed to update lease request" });
+    }
+  });
+
   app.post('/api/legal-requests', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -207,6 +237,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating legal request:", error);
       res.status(500).json({ message: "Failed to create legal request" });
+    }
+  });
+
+  app.patch('/api/legal-requests/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const updated = await storage.updateLegalRequest(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating legal request:", error);
+      res.status(500).json({ message: "Failed to update legal request" });
     }
   });
 
