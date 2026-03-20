@@ -220,7 +220,7 @@ export default function RequestSupport() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Urgency Level</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
                           <FormControl>
                             <SelectTrigger data-testid="select-urgency">
                               <SelectValue placeholder="Select urgency" />
@@ -244,10 +244,11 @@ export default function RequestSupport() {
                       <FormItem>
                         <FormLabel>Phone Number</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="tel"
-                            placeholder="Your phone number" 
-                            {...field} 
+                            placeholder="Your phone number"
+                            {...field}
+                            value={field.value ?? undefined}
                             data-testid="input-phone"
                           />
                         </FormControl>

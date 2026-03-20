@@ -23,7 +23,7 @@ export default function Partners() {
         { name: "Metropolitan Property Group", type: "Office Spaces", region: "North America" },
         { name: "European Commercial Estates", type: "Multi-use Properties", region: "Europe" },
         { name: "Middle East Property Alliance", type: "Commercial & Industrial", region: "Middle East" },
-        { name: "Asia Commercial Properties", type: "Retail & Warehouses", region: Asia }
+        { name: "Asia Commercial Properties", type: "Retail & Warehouses", region: "Asia" }
       ],
       icon: Building
     },

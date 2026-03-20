@@ -13,7 +13,7 @@ export default function PropertyDetail() {
   const [match, params] = useRoute("/real-estate/property/:id");
   const propertyId = params?.id;
 
-  const { data: property, isLoading, error } = useQuery({
+  const { data: property, isLoading, error } = useQuery<Property>({
     queryKey: ["/api/properties", propertyId],
     queryFn: async () => {
       if (!propertyId) throw new Error("Property ID is required");
@@ -140,7 +140,7 @@ export default function PropertyDetail() {
             
             <div className="text-right">
               <div className="text-3xl font-bold text-primary mb-2" data-testid="text-property-price">
-                {formatPrice(property.price, property.currency)}/month
+                {formatPrice(property.price, property.currency ?? undefined)}/month
               </div>
               <div className="flex items-center text-muted-foreground" data-testid="text-property-size">
                 <Square className="mr-1 h-4 w-4" />
@@ -288,7 +288,7 @@ export default function PropertyDetail() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Price:</span>
                     <span className="font-medium" data-testid="detail-price">
-                      {formatPrice(property.price, property.currency)}/month
+                      {formatPrice(property.price, property.currency ?? undefined)}/month
                     </span>
                   </div>
                   <div className="flex justify-between">

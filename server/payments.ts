@@ -1,18 +1,31 @@
+/**
+ * MOCK PAYMENTS MODULE — NOT PRODUCTION READY
+ *
+ * This file contains stubbed payment endpoints that return hardcoded mock
+ * responses. No real Stripe or Klarna SDK calls are made.
+ *
+ * To make this production-ready:
+ *   - Stripe: install the `stripe` npm package, set STRIPE_SECRET_KEY in env,
+ *     and replace the mock objects with real Stripe API calls.
+ *   - Klarna: integrate the official Klarna Payments SDK and set real
+ *     credentials via environment variables (never hardcode them).
+ *   - Remove or guard all mock/stub responses below.
+ */
 
 import type { Express } from "express";
 import { isAuthenticated } from "./replitAuth";
 
-// Mock payment configuration - replace with your actual credentials
+// Placeholder config — values must come from environment variables in production
 const PAYMENT_CONFIG = {
   klarna: {
-    accountNumber: "1234567890", // Your ACH account number
-    routingNumber: "021000021",  // Your routing number
-    bankName: "Global Business Gateway Bank"
+    accountNumber: process.env.KLARNA_ACCOUNT_NUMBER ?? "MOCK_ACCOUNT",
+    routingNumber: process.env.KLARNA_ROUTING_NUMBER ?? "MOCK_ROUTING",
+    bankName: "Global Business Gateway Bank",
   },
   stripe: {
-    publicKey: "pk_test_...", // Your Stripe publishable key
-    secretKey: "sk_test_...", // Your Stripe secret key (store in environment variables)
-  }
+    publicKey: process.env.STRIPE_PUBLIC_KEY ?? "pk_test_MOCK",
+    secretKey: process.env.STRIPE_SECRET_KEY ?? "sk_test_MOCK",
+  },
 };
 
 export function registerPaymentRoutes(app: Express) {

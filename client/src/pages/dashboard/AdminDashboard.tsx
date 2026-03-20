@@ -55,25 +55,25 @@ export default function AdminDashboard() {
   }, [isAuthenticated, isLoading, user, toast]);
 
   // Fetch all data for admin view
-  const { data: shipments, isLoading: shipmentsLoading } = useQuery({
+  const { data: shipments, isLoading: shipmentsLoading } = useQuery<Shipment[]>({
     queryKey: ["/api/shipments"],
     enabled: isAuthenticated && user?.role === "admin",
     retry: false,
   });
 
-  const { data: leaseRequests, isLoading: leaseRequestsLoading } = useQuery({
+  const { data: leaseRequests, isLoading: leaseRequestsLoading } = useQuery<LeaseRequest[]>({
     queryKey: ["/api/lease-requests"],
     enabled: isAuthenticated && user?.role === "admin",
     retry: false,
   });
 
-  const { data: legalRequests, isLoading: legalRequestsLoading } = useQuery({
+  const { data: legalRequests, isLoading: legalRequestsLoading } = useQuery<LegalRequest[]>({
     queryKey: ["/api/legal-requests"],
     enabled: isAuthenticated && user?.role === "admin",
     retry: false,
   });
 
-  const { data: properties, isLoading: propertiesLoading } = useQuery({
+  const { data: properties, isLoading: propertiesLoading } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
     enabled: isAuthenticated && user?.role === "admin",
     retry: false,
@@ -384,10 +384,10 @@ export default function AdminDashboard() {
                             <p className="text-xs text-muted-foreground">Weight: {shipment.weight}kg | Cost: ${shipment.cost}</p>
                           </div>
                           <div className="flex items-center space-x-2">
-                            {getStatusBadge(shipment.status)}
-                            <Select 
-                              value={shipment.status} 
-                              onValueChange={(value) => updateShipmentMutation.mutate({ id: shipment.id, status: value })}
+                            {getStatusBadge(shipment.status ?? "pending")}
+                            <Select
+                              value={shipment.status ?? undefined}
+                              onValueChange={(value) => updateShipmentMutation.mutate({ id: shipment.id!, status: value })}
                             >
                               <SelectTrigger className="w-32">
                                 <SelectValue />
@@ -402,7 +402,7 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Created: {new Date(shipment.createdAt).toLocaleString()}
+                          Created: {shipment.createdAt ? new Date(shipment.createdAt).toLocaleString() : "-"}
                         </div>
                       </div>
                     ))}
@@ -484,14 +484,14 @@ export default function AdminDashboard() {
                             <p className="font-medium text-foreground">{request.contactName}</p>
                             <p className="text-sm text-muted-foreground">{request.companyName}</p>
                             <p className="text-xs text-muted-foreground">
-                              Lease Term: {request.leaseTerm} months | Move-in: {request.desiredMoveInDate ? new Date(request.desiredMoveInDate).toLocaleDateString() : 'TBD'}
+                              Lease Term: {request.leaseTerm} months | Move-in: {request.desiredMoveInDate ? new Date(request.desiredMoveInDate!).toLocaleDateString() : 'TBD'}
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
-                            {getStatusBadge(request.status)}
-                            <Select 
-                              value={request.status} 
-                              onValueChange={(value) => updateLeaseRequestMutation.mutate({ id: request.id, status: value })}
+                            {getStatusBadge(request.status ?? "pending")}
+                            <Select
+                              value={request.status ?? undefined}
+                              onValueChange={(value) => updateLeaseRequestMutation.mutate({ id: request.id!, status: value })}
                             >
                               <SelectTrigger className="w-32">
                                 <SelectValue />
@@ -508,7 +508,7 @@ export default function AdminDashboard() {
                           <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{request.message}</p>
                         )}
                         <div className="text-xs text-muted-foreground">
-                          Contact: {request.contactEmail} | Created: {new Date(request.createdAt).toLocaleString()}
+                          Contact: {request.contactEmail} | Created: {request.createdAt ? new Date(request.createdAt).toLocaleString() : "-"}
                         </div>
                       </div>
                     ))}
@@ -551,10 +551,10 @@ export default function AdminDashboard() {
                             <Badge variant={request.urgency === "high" ? "destructive" : request.urgency === "medium" ? "default" : "secondary"}>
                               {request.urgency}
                             </Badge>
-                            {getStatusBadge(request.status)}
-                            <Select 
-                              value={request.status} 
-                              onValueChange={(value) => updateLegalRequestMutation.mutate({ id: request.id, status: value })}
+                            {getStatusBadge(request.status ?? "pending")}
+                            <Select
+                              value={request.status ?? undefined}
+                              onValueChange={(value) => updateLegalRequestMutation.mutate({ id: request.id!, status: value })}
                             >
                               <SelectTrigger className="w-32">
                                 <SelectValue />
@@ -569,7 +569,7 @@ export default function AdminDashboard() {
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{request.description}</p>
                         <div className="text-xs text-muted-foreground">
-                          Created: {new Date(request.createdAt).toLocaleString()}
+                          Created: {request.createdAt ? new Date(request.createdAt).toLocaleString() : "-"}
                           {request.assignedLawyer && ` | Assigned: ${request.assignedLawyer}`}
                         </div>
                       </div>

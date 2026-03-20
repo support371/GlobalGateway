@@ -42,21 +42,21 @@ export default function UserDashboard() {
   }, [isAuthenticated, isLoading, toast]);
 
   // Fetch user's shipments
-  const { data: shipments, isLoading: shipmentsLoading } = useQuery({
+  const { data: shipments, isLoading: shipmentsLoading } = useQuery<Shipment[]>({
     queryKey: ["/api/shipments"],
     enabled: isAuthenticated,
     retry: false,
   });
 
   // Fetch user's lease requests
-  const { data: leaseRequests, isLoading: leaseRequestsLoading } = useQuery({
+  const { data: leaseRequests, isLoading: leaseRequestsLoading } = useQuery<LeaseRequest[]>({
     queryKey: ["/api/lease-requests"],
     enabled: isAuthenticated,
     retry: false,
   });
 
   // Fetch user's legal requests
-  const { data: legalRequests, isLoading: legalRequestsLoading } = useQuery({
+  const { data: legalRequests, isLoading: legalRequestsLoading } = useQuery<LegalRequest[]>({
     queryKey: ["/api/legal-requests"],
     enabled: isAuthenticated,
     retry: false,
@@ -245,7 +245,7 @@ export default function UserDashboard() {
                           <p className="font-medium text-foreground">#{shipment.trackingNumber}</p>
                           <p className="text-sm text-muted-foreground">{shipment.origin} → {shipment.destination}</p>
                         </div>
-                        {getStatusBadge(shipment.status)}
+                        {getStatusBadge(shipment.status ?? "pending")}
                       </div>
                       <div className="flex justify-between items-center text-sm text-muted-foreground">
                         <span>{shipment.weight} kg</span>
@@ -300,12 +300,12 @@ export default function UserDashboard() {
                           <p className="font-medium text-foreground">{request.contactName}</p>
                           <p className="text-sm text-muted-foreground">{request.companyName}</p>
                         </div>
-                        {getStatusBadge(request.status)}
+                        {getStatusBadge(request.status ?? "pending")}
                       </div>
                       <div className="flex justify-between items-center text-sm text-muted-foreground">
                         <span>
                           <Calendar className="inline h-3 w-3 mr-1" />
-                          {request.desiredMoveInDate ? new Date(request.desiredMoveInDate).toLocaleDateString() : 'TBD'}
+                          {request.desiredMoveInDate ? new Date(request.desiredMoveInDate!).toLocaleDateString() : 'TBD'}
                         </span>
                         <span>{request.leaseTerm} months</span>
                       </div>
@@ -363,12 +363,12 @@ export default function UserDashboard() {
                         <Badge variant={request.urgency === "high" ? "destructive" : request.urgency === "medium" ? "default" : "secondary"}>
                           {request.urgency}
                         </Badge>
-                        {getStatusBadge(request.status)}
+                        {getStatusBadge(request.status ?? "pending")}
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-2">{request.description}</p>
                     <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
-                      <span>Created: {new Date(request.createdAt).toLocaleDateString()}</span>
+                      <span>Created: {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : "-"}</span>
                       {request.assignedLawyer && <span>Assigned: {request.assignedLawyer}</span>}
                     </div>
                   </div>
@@ -415,7 +415,7 @@ export default function UserDashboard() {
             <div className="mt-6 pt-6 border-t border-border">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">Member since:</span>
-                <span className="font-medium">{user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Recently'}</span>
+                <span className="font-medium">{user?.createdAt ? new Date(user.createdAt!).toLocaleDateString() : 'Recently'}</span>
               </div>
             </div>
           </CardContent>

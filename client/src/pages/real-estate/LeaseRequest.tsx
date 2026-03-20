@@ -174,9 +174,10 @@ export default function LeaseRequest() {
                       <FormItem>
                         <FormLabel>Specific Property (Optional)</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Enter property ID if you have a specific property in mind" 
-                            {...field} 
+                          <Input
+                            placeholder="Enter property ID if you have a specific property in mind"
+                            {...field}
+                            value={field.value ?? undefined}
                             data-testid="input-property-id"
                           />
                         </FormControl>
@@ -280,10 +281,11 @@ export default function LeaseRequest() {
                         <FormItem>
                           <FormLabel>Phone Number</FormLabel>
                           <FormControl>
-                            <Input 
+                            <Input
                               type="tel"
-                              placeholder="Enter your phone number" 
-                              {...field} 
+                              placeholder="Enter your phone number"
+                              {...field}
+                              value={field.value ?? undefined}
                               data-testid="input-contact-phone"
                             />
                           </FormControl>
@@ -300,9 +302,10 @@ export default function LeaseRequest() {
                       <FormItem>
                         <FormLabel>Company Name</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Enter your company name" 
-                            {...field} 
+                          <Input
+                            placeholder="Enter your company name"
+                            {...field}
+                            value={field.value ?? undefined}
                             data-testid="input-company-name"
                           />
                         </FormControl>
@@ -320,10 +323,11 @@ export default function LeaseRequest() {
                     <FormItem>
                       <FormLabel>Additional Requirements</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea
                           placeholder="Tell us about your specific requirements, preferred locations, size needs, budget, etc."
                           className="min-h-[100px]"
-                          {...field} 
+                          {...field}
+                          value={field.value ?? undefined}
                           data-testid="textarea-message"
                         />
                       </FormControl>

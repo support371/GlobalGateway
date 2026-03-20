@@ -148,14 +148,14 @@ export default function Tracking() {
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="flex items-center">
-                    {getStatusIcon(shipment.status)}
+                    {getStatusIcon(shipment.status ?? "pending")}
                     <span className="ml-2">Tracking: {shipment.trackingNumber}</span>
                   </CardTitle>
                   <p className="text-muted-foreground mt-1">
                     {shipment.service} Service
                   </p>
                 </div>
-                {getStatusBadge(shipment.status)}
+                {getStatusBadge(shipment.status ?? "pending")}
               </div>
             </CardHeader>
             <CardContent>
@@ -198,7 +198,7 @@ export default function Tracking() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Booked:</span>
                       <span data-testid="text-created">
-                        {new Date(shipment.createdAt).toLocaleDateString()}
+                        {shipment.createdAt ? new Date(shipment.createdAt).toLocaleDateString() : "-"}
                       </span>
                     </div>
                     {shipment.estimatedDelivery && (
@@ -213,7 +213,7 @@ export default function Tracking() {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Delivered:</span>
                         <span className="text-accent font-medium" data-testid="text-actual-delivery">
-                          {new Date(shipment.actualDelivery).toLocaleDateString()}
+                          {new Date(shipment.actualDelivery!).toLocaleDateString()}
                         </span>
                       </div>
                     )}
@@ -230,7 +230,7 @@ export default function Tracking() {
                     shipment.status === "in_transit" ? "bg-primary/10 border-primary" : 
                     "bg-muted border-border"
                   }`} data-testid="status-current">
-                    {getStatusIcon(shipment.status)}
+                    {getStatusIcon(shipment.status ?? "pending")}
                     <div className="ml-3">
                       <p className="font-medium">
                         {shipment.status === "pending" && "Package ready for pickup"}
@@ -239,7 +239,7 @@ export default function Tracking() {
                         {shipment.status === "cancelled" && "Shipment cancelled"}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(shipment.updatedAt).toLocaleString()}
+                        {shipment.updatedAt ? new Date(shipment.updatedAt).toLocaleString() : "-"}
                       </p>
                     </div>
                   </div>
