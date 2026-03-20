@@ -1,0 +1,23 @@
+/* Portal shell */
+.shell {
+  display: flex;
+  min-height: calc(100vh - 64px); /* 64px = nav height */
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6);
+}
+
+@media (max-width: 768px) {
+  .shell {
+    flex-direction: column;
+  }
+}
