@@ -1,0 +1,210 @@
+// ─── Global Gateway V2 — Prisma Schema ───────────────────────────────────────
+// Provider: PostgreSQL (Neon serverless or standard Postgres)
+// Generator: @prisma/client
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL") // For Neon serverless, use the pooled URL
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum ClientRole {
+  CLIENT
+  ADMIN
+  COMPLIANCE_OFFICER
+  SUPPORT
+}
+
+enum KycStatus {
+  NOT_STARTED
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum KycDocumentType {
+  GOVERNMENT_ID
+  PROOF_OF_ADDRESS
+  BUSINESS_REGISTRATION
+  BANK_STATEMENT
+  TAX_DOCUMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum TransactionMethod {
+  CARD
+  BANK_TRANSFER
+  KLARNA
+  WIRE
+}
+
+enum WebhookEvent {
+  PAYMENT_COMPLETED
+  PAYMENT_FAILED
+  KYC_APPROVED
+  KYC_REJECTED
+  SHIPMENT_UPDATED
+  LEASE_APPROVED
+}
+
+// ─── Core models ─────────────────────────────────────────────────────────────
+
+model Client {
+  id               String     @id @default(uuid())
+  email            String     @unique
+  firstName        String?
+  lastName         String?
+  companyName      String?
+  passwordHash     String
+  role             ClientRole @default(CLIENT)
+  kycLevel         Int        @default(0) // 0-3
+  kycStatus        KycStatus  @default(NOT_STARTED)
+  profileImageUrl  String?
+  phoneNumber      String?
+  timezone         String?    @default("UTC")
+  isEmailVerified  Boolean    @default(false)
+  isSuspended      Boolean    @default(false)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  // Relations
+  transactions   Transaction[]
+  ledgerEntries  LedgerEntry[]
+  refreshTokens  RefreshToken[]
+  apiKeys        ApiKey[]
+  kycDocuments   KycDocument[]
+  webhooks       Webhook[]
+
+  @@index([email])
+  @@map("clients")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  jti       String   @unique             // JWT ID for revocation
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+  @@index([jti])
+  @@map("refresh_tokens")
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  clientId    String
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  keyHash     String    @unique          // bcrypt hash of the key
+  name        String                    // Human-readable label
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isRevoked   Boolean   @default(false)
+  scopes      String[]  @default([])    // e.g. ["payments:read", "kyc:write"]
+  createdAt   DateTime  @default(now())
+
+  @@index([clientId])
+  @@map("api_keys")
+}
+
+// ─── KYC / Compliance ─────────────────────────────────────────────────────────
+
+model KycDocument {
+  id           String          @id @default(uuid())
+  clientId     String
+  client       Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type         KycDocumentType
+  status       KycStatus       @default(PENDING)
+  fileUrl      String          // Secure storage URL (Azure Blob or S3)
+  mimeType     String
+  sizeBytes    Int
+  reviewNotes  String?
+  submittedAt  DateTime        @default(now())
+  reviewedAt   DateTime?
+  reviewedBy   String?         // Admin client ID
+
+  @@index([clientId])
+  @@index([status])
+  @@map("kyc_documents")
+}
+
+// ─── Payments / Ledger ────────────────────────────────────────────────────────
+
+model Transaction {
+  id              String            @id @default(uuid())
+  clientId        String
+  client          Client            @relation(fields: [clientId], references: [id])
+  amount          Decimal           @db.Decimal(15, 2)
+  currency        String            @default("USD")
+  method          TransactionMethod
+  status          TransactionStatus @default(PENDING)
+  description     String?
+  metadata        Json?
+  providerRef     String?           // Stripe PaymentIntent ID, Klarna order ID, etc.
+  idempotencyKey  String?           @unique
+  failureReason   String?
+  completedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  ledgerEntries LedgerEntry[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+model LedgerEntry {
+  id            String      @id @default(uuid())
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id])
+  transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  amount        Decimal     @db.Decimal(15, 2)
+  currency      String      @default("USD")
+  direction     String      // "debit" | "credit"
+  balance       Decimal     @db.Decimal(15, 2)  // Running balance after entry
+  description   String
+  createdAt     DateTime    @default(now())
+
+  @@index([clientId])
+  @@index([createdAt])
+  @@map("ledger_entries")
+}
+
+// ─── Webhooks ─────────────────────────────────────────────────────────────────
+
+model Webhook {
+  id          String       @id @default(uuid())
+  clientId    String
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  url         String
+  secret      String       // HMAC signing secret
+  events      WebhookEvent[]
+  isActive    Boolean      @default(true)
+  lastFiredAt DateTime?
+  failCount   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([clientId])
+  @@map("webhooks")
+}
