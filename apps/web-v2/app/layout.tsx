@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://globalgateway.com"
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://global-gateway-5enx4n7g4-admin-25521151s-projects.vercel.app"
   ),
   title: {
     default: "Global Gateway — International Business Platform",
