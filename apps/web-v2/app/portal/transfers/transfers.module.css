@@ -1,0 +1,188 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: 640px;
+}
+
+.pageHeader {}
+
+.pageTitle {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+}
+
+.pageSubtitle {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+}
+
+/* Steps */
+.steps { overflow: hidden; }
+
+.stepsList {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.stepCircle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.stepActive {
+  background: var(--color-blue-400);
+  color: var(--color-navy-950);
+}
+
+.stepPending {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border-default);
+}
+
+.stepLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.stepConnector {
+  flex: 1;
+  height: 1px;
+  background: var(--border-default);
+  margin: 0 var(--space-2);
+}
+
+/* Form */
+.stepCard {
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.stepTitle {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.amountRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fieldLabel {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.amountInput {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-elevated);
+  transition: border-color var(--transition-fast);
+}
+
+.amountInput:focus-within {
+  border-color: var(--color-blue-400);
+}
+
+.currencySelect {
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-muted);
+  border: none;
+  border-right: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  min-width: 80px;
+}
+
+.amountField {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  outline: none;
+}
+
+.amountField::placeholder {
+  color: var(--text-disabled);
+}
+
+.rateInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.rateLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.rateValue {
+  font-size: var(--text-sm);
+  color: var(--color-blue-300);
+  font-weight: 600;
+}
+
+.nextBtn {
+  padding: 14px;
+  background: var(--color-blue-400);
+  color: var(--color-navy-950);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.nextBtn:hover {
+  background: var(--color-blue-300);
+  box-shadow: var(--shadow-glow-blue);
+}
+
+.disclaimer {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: var(--leading-relaxed);
+}

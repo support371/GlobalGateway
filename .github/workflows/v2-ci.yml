@@ -1,0 +1,71 @@
+name: V2 CI
+
+on:
+  push:
+    branches: ["claude/v2-nextjs-migration", "claude/*"]
+    paths: ["apps/web-v2/**"]
+  pull_request:
+    branches: ["master"]
+    paths: ["apps/web-v2/**"]
+
+defaults:
+  run:
+    working-directory: apps/web-v2
+
+jobs:
+  validate:
+    name: Type-check, lint, and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/web-v2/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          # Provide stub values so build doesn't fail on missing env
+          DATABASE_URL: "postgresql://stub:stub@localhost/stub"
+          JWT_SECRET: "ci-stub-secret-32-chars-minimum-!!"
+          JWT_REFRESH_SECRET: "ci-stub-refresh-secret-32-chars!!"
+          NEXT_PUBLIC_APP_URL: "https://localhost:3000"
+
+  legacy-check:
+    name: Legacy app still builds
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check legacy
+        run: npm run check
+
+      - name: Build legacy
+        run: npm run build

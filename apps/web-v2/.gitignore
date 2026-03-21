@@ -1,0 +1,17 @@
+# Next.js
+.next/
+out/
+
+# Node
+node_modules/
+
+# Env (never commit real .env)
+.env
+.env.local
+.env.production
+
+# Prisma
+prisma/migrations/
+
+# Build artifacts
+*.tsbuildinfo
