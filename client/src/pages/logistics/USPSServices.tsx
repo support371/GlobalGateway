@@ -53,7 +53,10 @@ const rateSchema = z.object({
   weight: z
     .string()
     .min(1, "Weight is required")
-    .refine((v) => Number(v) > 0 && Number(v) <= 70, "Weight must be between 0 and 70 lbs"),
+    .refine(
+      (value) => Number(value) > 0 && Number(value) <= 70,
+      "Weight must be between 0 and 70 lbs",
+    ),
   service: z.string().default("ALL"),
 });
 type RateForm = z.infer<typeof rateSchema>;
@@ -74,7 +77,7 @@ const SERVICE_OPTIONS = [
   { value: "ALL", label: "All available services" },
   { value: "PRIORITY", label: "Priority Mail" },
   { value: "PRIORITY MAIL EXPRESS", label: "Priority Mail Express" },
-  { value: "FIRST CLASS", label: "First-Class Package" },
+  { value: "FIRST CLASS", label: "USPS Ground Advantage" },
   { value: "PARCEL SELECT GROUND", label: "USPS Ground Advantage" },
 ];
 
@@ -82,12 +85,11 @@ function AccessPendingNotice() {
   return (
     <Alert className="border-primary/40 bg-primary/5">
       <Info className="h-4 w-4" />
-      <AlertTitle>USPS API access pending activation</AlertTitle>
+      <AlertTitle>USPS REST API access is not authorized yet</AlertTitle>
       <AlertDescription>
-        The connection to USPS Web Tools is configured and working, but the U.S.
-        Postal Service has not yet activated this account&apos;s API access on
-        their production server. Live results will appear here automatically
-        once USPS approves the access request for your Web Tools USERID.
+        Add valid USPS OAuth credentials to the deployment and confirm that the
+        Prices and Addresses APIs are enabled for the application. The required
+        server variables are USPS_CLIENT_ID and USPS_CLIENT_SECRET.
       </AlertDescription>
     </Alert>
   );
@@ -101,7 +103,12 @@ function RateCalculator() {
 
   const form = useForm<RateForm>({
     resolver: zodResolver(rateSchema),
-    defaultValues: { originZip: "", destinationZip: "", weight: "", service: "ALL" },
+    defaultValues: {
+      originZip: "",
+      destinationZip: "",
+      weight: "",
+      service: "ALL",
+    },
   });
 
   const onSubmit = async (data: RateForm) => {
@@ -136,7 +143,7 @@ function RateCalculator() {
           USPS Rate Calculator
         </CardTitle>
         <CardDescription>
-          Live domestic rates from the USPS RateV4 Web Tools API.
+          Live domestic prices from the current USPS Prices REST API.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -210,16 +217,16 @@ function RateCalculator() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Service</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-usps-service">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {SERVICE_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
+                        {SERVICE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -258,26 +265,30 @@ function RateCalculator() {
         {rates && rates.length > 0 && (
           <div className="mt-6 space-y-3" data-testid="usps-rate-results">
             <h3 className="font-semibold">Available Services</h3>
-            {rates.map((r, i) => (
+            {rates.map((rate, index) => (
               <div
-                key={`${r.service}-${i}`}
+                key={`${rate.service}-${index}`}
                 className="flex items-center justify-between rounded-lg border p-4"
               >
                 <div className="flex items-center gap-3">
                   <Truck className="h-5 w-5 text-primary" />
                   <div>
-                    <p className="font-medium">{r.service}</p>
-                    {r.commitment && (
-                      <p className="text-sm text-muted-foreground">{r.commitment}</p>
+                    <p className="font-medium">{rate.service}</p>
+                    {rate.commitment && (
+                      <p className="text-sm text-muted-foreground">
+                        {rate.commitment}
+                      </p>
                     )}
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold" data-testid={`rate-${i}`}>
-                    ${r.rate.toFixed(2)}
+                  <p className="text-lg font-bold" data-testid={`rate-${index}`}>
+                    ${rate.rate.toFixed(2)}
                   </p>
-                  {r.zone && (
-                    <p className="text-xs text-muted-foreground">Zone {r.zone}</p>
+                  {rate.zone && (
+                    <p className="text-xs text-muted-foreground">
+                      Zone {rate.zone}
+                    </p>
                   )}
                 </div>
               </div>
@@ -303,7 +314,13 @@ function AddressVerifier() {
 
   const form = useForm<AddressForm>({
     resolver: zodResolver(addressSchema),
-    defaultValues: { address2: "", address1: "", city: "", state: "", zip5: "" },
+    defaultValues: {
+      address2: "",
+      address1: "",
+      city: "",
+      state: "",
+      zip5: "",
+    },
   });
 
   const onSubmit = async (data: AddressForm) => {
@@ -324,7 +341,9 @@ function AddressVerifier() {
       if (err instanceof UspsRequestError && err.isAccessPending) {
         setAccessPending(true);
       } else {
-        setError(err instanceof Error ? err.message : "Unable to verify address.");
+        setError(
+          err instanceof Error ? err.message : "Unable to verify address.",
+        );
       }
     } finally {
       setLoading(false);
@@ -339,7 +358,7 @@ function AddressVerifier() {
           Address Verification
         </CardTitle>
         <CardDescription>
-          Standardize and validate US addresses via the USPS Address (Verify) API.
+          Standardize and validate US addresses with the USPS Addresses REST API.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -369,7 +388,11 @@ function AddressVerifier() {
                 <FormItem>
                   <FormLabel>Apt / Suite (optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Suite 200" {...field} data-testid="input-apt" />
+                    <Input
+                      placeholder="Suite 200"
+                      {...field}
+                      data-testid="input-apt"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -383,7 +406,11 @@ function AddressVerifier() {
                   <FormItem className="sm:col-span-1">
                     <FormLabel>City</FormLabel>
                     <FormControl>
-                      <Input placeholder="Mountain View" {...field} data-testid="input-city" />
+                      <Input
+                        placeholder="Mountain View"
+                        {...field}
+                        data-testid="input-city"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -471,7 +498,9 @@ function AddressVerifier() {
               </div>
             </address>
             {verified.returnText && (
-              <p className="mt-2 text-xs text-muted-foreground">{verified.returnText}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {verified.returnText}
+              </p>
             )}
           </div>
         )}
@@ -491,14 +520,14 @@ export default function USPSServices() {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2 text-balance">
-            USPS Web Tools Services
+            USPS REST API Services
           </h1>
           <p className="text-muted-foreground text-pretty">
-            Live USPS rate quotes and address verification, powered directly by the
-            USPS Web Tools API.
+            Live USPS domestic prices and address standardization through the
+            current OAuth-secured USPS APIs.
           </p>
           <div className="mt-3 flex justify-center">
-            <Badge variant="secondary">Powered by USPS Web Tools</Badge>
+            <Badge variant="secondary">Powered by USPS REST APIs</Badge>
           </div>
         </div>
 
