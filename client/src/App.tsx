@@ -47,6 +47,7 @@ import TermsOfService from "./pages/legal/TermsOfService";
 
 import UserDashboard from "./pages/dashboard/UserDashboard";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
+import WarehouseForwardingAdmin from "./pages/dashboard/WarehouseForwardingAdmin";
 
 export default function App() {
   return (
@@ -95,6 +96,7 @@ export default function App() {
 
           <Route path="/auth/account-dashboard" component={UserDashboard} />
           <Route path="/admin/dashboard" component={AdminDashboard} />
+          <Route path="/admin/warehouse-forwarding" component={WarehouseForwardingAdmin} />
 
           <Route component={NotFound} />
         </Switch>
