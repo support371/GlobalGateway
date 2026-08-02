@@ -260,6 +260,14 @@ const SERVICE_ALIASES: Record<string, string> = {
   "GROUND ADVANTAGE": "USPS_GROUND_ADVANTAGE",
 };
 
+const DEFAULT_MAIL_CLASSES = [
+  "USPS_GROUND_ADVANTAGE",
+  "PRIORITY_MAIL",
+  "PRIORITY_MAIL_EXPRESS",
+  "MEDIA_MAIL",
+  "LIBRARY_MAIL",
+];
+
 function normalizeMailClass(service?: string): string {
   const value = String(service || "ALL").trim().toUpperCase();
   return SERVICE_ALIASES[value] || value;
@@ -274,6 +282,12 @@ function humanize(value: unknown): string {
 }
 
 export async function getRates(request: RateRequest): Promise<RateResult[]> {
+  const selectedMailClass = normalizeMailClass(request.service);
+  const mailClasses =
+    selectedMailClass === "ALL"
+      ? DEFAULT_MAIL_CLASSES
+      : [selectedMailClass];
+
   const result = await callUsps<JsonRecord>(
     "/prices/v3/base-rates-list/search",
     {
@@ -285,9 +299,10 @@ export async function getRates(request: RateRequest): Promise<RateResult[]> {
         length: request.length || 1,
         width: request.width || 1,
         height: request.height || 1,
-        mailClasses: [normalizeMailClass(request.service)],
+        mailClasses,
         priceType: request.priceType || "RETAIL",
         mailingDate: new Date().toISOString().slice(0, 10),
+        hasNonstandardCharacteristics: false,
       }),
     },
   );
