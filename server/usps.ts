@@ -11,6 +11,7 @@ type JsonRecord = Record<string, any>;
  *   USPS_API_ENV=production|test
  *   USPS_API_BASE_URL=https://apis.usps.com
  *   USPS_OAUTH_URL=https://apis.usps.com/oauth2/v3/token
+ *   USPS_REQUEST_TIMEOUT_MS=12000
  */
 const isTestEnvironment = process.env.USPS_API_ENV === "test";
 const defaultBaseUrl = isTestEnvironment
@@ -22,6 +23,11 @@ const USPS_API_BASE_URL = (process.env.USPS_API_BASE_URL || defaultBaseUrl).repl
 );
 const USPS_OAUTH_URL =
   process.env.USPS_OAUTH_URL || `${USPS_API_BASE_URL}/oauth2/v3/token`;
+const configuredTimeout = Number(process.env.USPS_REQUEST_TIMEOUT_MS || 12_000);
+const USPS_REQUEST_TIMEOUT_MS =
+  Number.isFinite(configuredTimeout) && configuredTimeout >= 1_000
+    ? Math.min(configuredTimeout, 30_000)
+    : 12_000;
 
 let tokenCache: { accessToken: string; expiresAt: number } | null = null;
 
@@ -77,6 +83,29 @@ async function readJson(response: Response): Promise<any> {
   }
 }
 
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  operation: string,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), USPS_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      throw new UspsError(
+        `${operation} timed out after ${USPS_REQUEST_TIMEOUT_MS}ms.`,
+        "USPS_TIMEOUT",
+        504,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function getAccessToken(): Promise<string> {
   if (tokenCache && Date.now() < tokenCache.expiresAt) {
     return tokenCache.accessToken;
@@ -85,16 +114,24 @@ async function getAccessToken(): Promise<string> {
   const { clientId, clientSecret } = getCredentials();
   let response: Response;
   try {
-    response = await fetch(USPS_OAUTH_URL, {
-      method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({
-        grant_type: "client_credentials",
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
-    });
+    response = await fetchWithTimeout(
+      USPS_OAUTH_URL,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          grant_type: "client_credentials",
+          client_id: clientId,
+          client_secret: clientSecret,
+        }),
+      },
+      "USPS OAuth request",
+    );
   } catch (error: any) {
+    if (error instanceof UspsError) throw error;
     throw new UspsError(
       `Unable to reach USPS OAuth: ${error?.message || "network error"}`,
       "USPS_NETWORK_ERROR",
@@ -133,16 +170,21 @@ async function callUsps<T>(
   const token = await getAccessToken();
   let response: Response;
   try {
-    response = await fetch(`${USPS_API_BASE_URL}${path}`, {
-      ...init,
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...(init.headers || {}),
+    response = await fetchWithTimeout(
+      `${USPS_API_BASE_URL}${path}`,
+      {
+        ...init,
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+          ...(init.body ? { "Content-Type": "application/json" } : {}),
+          ...(init.headers || {}),
+        },
       },
-    });
+      "USPS API request",
+    );
   } catch (error: any) {
+    if (error instanceof UspsError) throw error;
     throw new UspsError(
       `Unable to reach USPS: ${error?.message || "network error"}`,
       "USPS_NETWORK_ERROR",
@@ -261,7 +303,9 @@ export async function getRates(request: RateRequest): Promise<RateResult[]> {
       const amount = Number(rate?.price ?? option?.totalBasePrice);
       if (!Number.isFinite(amount)) continue;
       rates.push({
-        service: humanize(rate?.mailClass || rate?.productName || rate?.description),
+        service: humanize(
+          rate?.mailClass || rate?.productName || rate?.description,
+        ),
         rate: amount,
         currency: "USD",
         commitment:
@@ -323,7 +367,7 @@ function normalizeTrackingEvent(event: JsonRecord): TrackEvent {
     time: timestamp.time,
     city,
     state,
-    zip: zipValue ? String(zipValue) : undefined,
+    zip: zipValue ? String(zipValue).padStart(5, "0") : undefined,
     raw: [label, location, when].filter(Boolean).join(" — "),
   };
 }
@@ -425,8 +469,10 @@ export async function verifyAddress(
     ),
     city: String(address.city || address.cityAbbreviation || ""),
     state: String(address.state || ""),
-    zip5: String(address.ZIPCode || ""),
-    zip4: address.ZIPPlus4 ? String(address.ZIPPlus4) : undefined,
+    zip5: String(address.ZIPCode || "").padStart(5, "0"),
+    zip4: address.ZIPPlus4
+      ? String(address.ZIPPlus4).padStart(4, "0")
+      : undefined,
     returnText:
       result?.additionalInfo?.returnCodeText ||
       result?.additionalInfo?.secondaryInfo ||
@@ -441,4 +487,5 @@ export const uspsConfig = {
   configured: Boolean(
     process.env.USPS_CLIENT_ID?.trim() && process.env.USPS_CLIENT_SECRET?.trim(),
   ),
+  requestTimeoutMs: USPS_REQUEST_TIMEOUT_MS,
 };
