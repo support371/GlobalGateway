@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { registerForwardingRoutes } from "./forwardingRoutes";
 
 function log(message: string) {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -19,7 +20,11 @@ export async function createApp() {
   app.use((req, res, next) => {
     const start = Date.now();
     const path = req.path;
-    const containsSensitiveCarrierData = path.startsWith("/api/usps/");
+    const containsSensitiveCarrierData =
+      path.startsWith("/api/usps/") ||
+      path.startsWith("/api/forwarding-orders") ||
+      path.startsWith("/api/admin/forwarding-orders") ||
+      path.startsWith("/api/warehouse/");
     let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
     const originalResJson = res.json;
@@ -32,8 +37,8 @@ export async function createApp() {
       const duration = Date.now() - start;
       if (path.startsWith("/api")) {
         let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        // USPS responses can contain street addresses and package locations.
-        // Keep operational metadata while preventing carrier data from entering logs.
+        // Carrier and forwarding responses can contain addresses and package data.
+        // Keep operational metadata while preventing private data from entering logs.
         if (capturedJsonResponse && !containsSensitiveCarrierData) {
           logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
         }
@@ -48,6 +53,7 @@ export async function createApp() {
   });
 
   await registerRoutes(app);
+  registerForwardingRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
