@@ -1,96 +1,221 @@
-import { XMLParser } from "fast-xml-parser";
+type JsonRecord = Record<string, any>;
 
 /**
- * USPS Web Tools API integration.
+ * USPS REST API integration.
  *
- * Docs: https://www.usps.com/business/web-tools-apis/documentation-updates.htm
- * Endpoint: https://secure.shippingapis.com/ShippingAPI.dll
+ * The legacy Web Tools XML endpoints were retired in January 2026. This module
+ * uses the current USPS v3 REST APIs with OAuth 2.0 client credentials.
  *
- * Requests are sent as GET calls with two query params:
- *   - API:  the API name (e.g. RateV4, TrackV2, Verify)
- *   - XML:  a URL-encoded XML request document containing the USERID
+ * Required environment variables:
+ *   USPS_CLIENT_ID
+ *   USPS_CLIENT_SECRET
  *
- * The USERID authenticates the request. It is read from the USPS_USERID env
- * var, falling back to the credential supplied in the integration README so
- * the feature works out of the box.
+ * Optional environment variables:
+ *   USPS_API_ENV=production|test
+ *   USPS_API_BASE_URL=https://apis.usps.com
+ *   USPS_OAUTH_URL=https://apis.usps.com/oauth2/v3/token
  */
 
-const USPS_ENDPOINT =
-  process.env.USPS_ENDPOINT ||
-  "https://secure.shippingapis.com/ShippingAPI.dll";
+const isTestEnvironment = process.env.USPS_API_ENV === "test";
+const defaultBaseUrl = isTestEnvironment
+  ? "https://apis-tem.usps.com"
+  : "https://apis.usps.com";
+const USPS_API_BASE_URL = (process.env.USPS_API_BASE_URL || defaultBaseUrl).replace(
+  /\/+$/,
+  "",
+);
+const USPS_OAUTH_URL =
+  process.env.USPS_OAUTH_URL || `${USPS_API_BASE_URL}/oauth2/v3/token`;
+const USPS_CLIENT_ID = process.env.USPS_CLIENT_ID?.trim();
+const USPS_CLIENT_SECRET = process.env.USPS_CLIENT_SECRET?.trim();
 
-// Provided Web Tools USERID (see integration README). Prefer the env var.
-const USPS_USERID = process.env.USPS_USERID || "1C953GEMCY337";
-
-const parser = new XMLParser({
-  ignoreAttributes: false,
-  attributeNamePrefix: "@_",
-  parseTagValue: true,
-  trimValues: true,
-});
+let tokenCache: { accessToken: string; expiresAt: number } | null = null;
 
 export class UspsError extends Error {
   constructor(
     message: string,
-    public readonly code?: string,
+    public readonly code = "USPS_ERROR",
+    public readonly status = 502,
   ) {
     super(message);
     this.name = "UspsError";
   }
 }
 
-function escapeXml(value: string): string {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+function extractErrorMessage(payload: any, fallback: string): string {
+  const candidates = [
+    payload?.error_description,
+    payload?.message,
+    payload?.error?.message,
+    payload?.error?.description,
+    payload?.apiError?.message,
+    payload?.apiError?.errorMessage,
+    payload?.errors?.[0]?.message,
+    payload?.errors?.[0]?.description,
+    payload?.response?.message,
+  ];
+
+  const match = candidates.find(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  );
+  return match ? match.trim() : fallback;
 }
 
-/** Send an XML request to the USPS Web Tools API and return the parsed body. */
-async function callUsps(api: string, xml: string): Promise<any> {
-  const url = `${USPS_ENDPOINT}?API=${encodeURIComponent(
-    api,
-  )}&XML=${encodeURIComponent(xml)}`;
-
-  let res: Response;
+async function readJsonResponse(response: Response): Promise<any> {
+  const text = await response.text();
+  if (!text) return null;
   try {
-    res = await fetch(url, { method: "GET" });
-  } catch (err: any) {
+    return JSON.parse(text);
+  } catch {
+    return { message: text.slice(0, 500) };
+  }
+}
+
+function requireCredentials(): asserts USPS_CLIENT_ID is string {
+  if (!USPS_CLIENT_ID || !USPS_CLIENT_SECRET) {
     throw new UspsError(
-      `Unable to reach USPS Web Tools: ${err?.message ?? "network error"}`,
+      "USPS live services are not configured. Add USPS_CLIENT_ID and USPS_CLIENT_SECRET to the deployment environment.",
+      "USPS_NOT_CONFIGURED",
+      503,
+    );
+  }
+}
+
+async function getAccessToken(): Promise<string> {
+  requireCredentials();
+
+  if (tokenCache && Date.now() < tokenCache.expiresAt) {
+    return tokenCache.accessToken;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(USPS_OAUTH_URL, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        grant_type: "client_credentials",
+        client_id: USPS_CLIENT_ID,
+        client_secret: USPS_CLIENT_SECRET,
+      }),
+    });
+  } catch (error: any) {
+    throw new UspsError(
+      `Unable to reach USPS OAuth: ${error?.message || "network error"}`,
+      "USPS_NETWORK_ERROR",
+      502,
     );
   }
 
-  const body = await res.text();
-  const parsed = parser.parse(body);
-
-  // A top-level <Error> means the whole request failed (bad USERID, unknown
-  // API, malformed XML, etc.).
-  if (parsed?.Error) {
+  const payload = await readJsonResponse(response);
+  if (!response.ok || !payload?.access_token) {
+    const code =
+      response.status === 401
+        ? "USPS_AUTH_FAILED"
+        : response.status === 403
+          ? "USPS_ACCESS_DENIED"
+          : "USPS_OAUTH_ERROR";
+    const status = response.status === 401 || response.status === 403 ? 503 : 502;
     throw new UspsError(
-      String(parsed.Error.Description ?? "USPS request failed").trim(),
-      parsed.Error.Number ? String(parsed.Error.Number) : undefined,
+      extractErrorMessage(payload, `USPS OAuth failed (${response.status})`),
+      code,
+      status,
     );
   }
 
-  return parsed;
+  const expiresInSeconds = Number(payload.expires_in || 28_800);
+  tokenCache = {
+    accessToken: String(payload.access_token),
+    // Refresh at least one minute before expiry.
+    expiresAt: Date.now() + Math.max(60, expiresInSeconds - 60) * 1000,
+  };
+
+  return tokenCache.accessToken;
+}
+
+async function callUsps<T>(
+  path: string,
+  init: RequestInit = {},
+  retryAfterUnauthorized = true,
+): Promise<T> {
+  const token = await getAccessToken();
+  let response: Response;
+
+  try {
+    response = await fetch(`${USPS_API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...(init.headers || {}),
+      },
+    });
+  } catch (error: any) {
+    throw new UspsError(
+      `Unable to reach USPS: ${error?.message || "network error"}`,
+      "USPS_NETWORK_ERROR",
+      502,
+    );
+  }
+
+  if (response.status === 401 && retryAfterUnauthorized) {
+    tokenCache = null;
+    return callUsps<T>(path, init, false);
+  }
+
+  const payload = await readJsonResponse(response);
+  if (!response.ok) {
+    const code =
+      response.status === 401
+        ? "USPS_AUTH_FAILED"
+        : response.status === 403
+          ? "USPS_ACCESS_DENIED"
+          : response.status === 404
+            ? "USPS_NOT_FOUND"
+            : response.status === 429
+              ? "USPS_RATE_LIMITED"
+              : response.status >= 500
+                ? "USPS_UNAVAILABLE"
+                : "USPS_REQUEST_REJECTED";
+
+    const outwardStatus =
+      response.status === 401 || response.status === 403
+        ? 503
+        : response.status === 404
+          ? 404
+          : response.status === 429
+            ? 429
+            : response.status >= 500
+              ? 502
+              : 422;
+
+    throw new UspsError(
+      extractErrorMessage(payload, `USPS request failed (${response.status})`),
+      code,
+      outwardStatus,
+    );
+  }
+
+  return payload as T;
 }
 
 /* -------------------------------------------------------------------------- */
-/* RateV4 — domestic package price calculator                                 */
+/* Domestic prices                                                            */
 /* -------------------------------------------------------------------------- */
 
 export interface RateRequest {
   originZip: string;
   destinationZip: string;
-  /** Total package weight in pounds (can be fractional). */
   weightLbs: number;
-  /** USPS service, e.g. "PRIORITY", "PRIORITY MAIL EXPRESS", "FIRST CLASS", "PARCEL SELECT GROUND". */
+  length?: number;
+  width?: number;
+  height?: number;
   service?: string;
-  /** Container type, defaults to VARIABLE. */
-  container?: string;
+  priceType?: "RETAIL" | "COMMERCIAL";
 }
 
 export interface RateResult {
@@ -101,75 +226,90 @@ export interface RateResult {
   zone?: string;
 }
 
-// Split a fractional pound weight into whole pounds + ounces for USPS.
-function splitWeight(weightLbs: number): { pounds: number; ounces: number } {
-  const safe = Math.max(weightLbs, 0);
-  const pounds = Math.floor(safe);
-  const ounces = Math.round((safe - pounds) * 16 * 10) / 10;
-  return { pounds, ounces };
+const SERVICE_ALIASES: Record<string, string> = {
+  PRIORITY: "PRIORITY_MAIL",
+  "PRIORITY MAIL": "PRIORITY_MAIL",
+  "PRIORITY MAIL EXPRESS": "PRIORITY_MAIL_EXPRESS",
+  EXPRESS: "PRIORITY_MAIL_EXPRESS",
+  "FIRST CLASS": "USPS_GROUND_ADVANTAGE",
+  "FIRST-CLASS PACKAGE SERVICE": "USPS_GROUND_ADVANTAGE",
+  "PARCEL SELECT GROUND": "USPS_GROUND_ADVANTAGE",
+  "GROUND ADVANTAGE": "USPS_GROUND_ADVANTAGE",
+};
+
+function normalizeMailClass(service?: string): string {
+  const normalized = String(service || "ALL").trim().toUpperCase();
+  return SERVICE_ALIASES[normalized] || normalized;
 }
 
-export async function getRates(req: RateRequest): Promise<RateResult[]> {
-  const { pounds, ounces } = splitWeight(req.weightLbs);
-  const service = (req.service || "ALL").toUpperCase();
-  const container = req.container || "VARIABLE";
+function humanizeMailClass(value: unknown): string {
+  return String(value || "USPS Service")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .replace(/Usps/g, "USPS");
+}
 
-  const xml =
-    `<RateV4Request USERID="${escapeXml(USPS_USERID)}">` +
-    `<Revision>2</Revision>` +
-    `<Package ID="1">` +
-    `<Service>${escapeXml(service)}</Service>` +
-    `<ZipOrigination>${escapeXml(req.originZip)}</ZipOrigination>` +
-    `<ZipDestination>${escapeXml(req.destinationZip)}</ZipDestination>` +
-    `<Pounds>${pounds}</Pounds>` +
-    `<Ounces>${ounces}</Ounces>` +
-    `<Container>${escapeXml(container)}</Container>` +
-    `<Width></Width><Length></Length><Height></Height><Girth></Girth>` +
-    `<Machinable>true</Machinable>` +
-    `</Package>` +
-    `</RateV4Request>`;
+export async function getRates(request: RateRequest): Promise<RateResult[]> {
+  const mailClass = normalizeMailClass(request.service);
+  const payload = {
+    originZIPCode: request.originZip,
+    destinationZIPCode: request.destinationZip,
+    weight: request.weightLbs,
+    length: request.length || 1,
+    width: request.width || 1,
+    height: request.height || 1,
+    mailClasses: [mailClass],
+    priceType: request.priceType || "RETAIL",
+    mailingDate: new Date().toISOString().slice(0, 10),
+  };
 
-  const parsed = await callUsps("RateV4", xml);
-  const pkg = parsed?.RateV4Response?.Package;
+  const result = await callUsps<JsonRecord>(
+    "/prices/v3/base-rates-list/search",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 
-  if (!pkg) {
-    throw new UspsError("USPS returned no rate information.");
-  }
-
-  // A per-package <Error> can be nested even when the request succeeds.
-  if (pkg.Error) {
-    throw new UspsError(
-      String(pkg.Error.Description ?? "USPS could not rate this package").trim(),
-      pkg.Error.Number ? String(pkg.Error.Number) : undefined,
-    );
-  }
-
-  const postageList = Array.isArray(pkg.Postage)
-    ? pkg.Postage
-    : pkg.Postage
-      ? [pkg.Postage]
+  const rateOptions = Array.isArray(result?.rateOptions)
+    ? result.rateOptions
+    : Array.isArray(result?.rates)
+      ? [{ rates: result.rates, totalBasePrice: result.totalBasePrice }]
       : [];
 
-  const decodeMailService = (s: unknown) =>
-    String(s ?? "")
-      .replace(/&lt;\/?sup&gt;.*?&lt;\/sup&gt;/g, "")
-      .replace(/<\/?sup>.*?<\/sup>/g, "")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .trim();
+  const rates: RateResult[] = [];
+  for (const option of rateOptions) {
+    const optionRates = Array.isArray(option?.rates) ? option.rates : [];
+    for (const rate of optionRates) {
+      const amount = Number(rate?.price ?? option?.totalBasePrice);
+      if (!Number.isFinite(amount)) continue;
+      rates.push({
+        service: humanizeMailClass(
+          rate?.mailClass || rate?.productName || rate?.description,
+        ),
+        rate: amount,
+        currency: "USD",
+        commitment:
+          typeof rate?.description === "string" ? rate.description : undefined,
+        zone: rate?.zone ? String(rate.zone) : undefined,
+      });
+    }
+  }
 
-  return postageList.map((p: any): RateResult => ({
-    service: decodeMailService(p.MailService),
-    rate: Number(p.Rate ?? 0),
-    currency: "USD",
-    commitment: p.CommitmentName ? String(p.CommitmentName) : undefined,
-    zone: pkg.Zone ? String(pkg.Zone) : undefined,
-  }));
+  const seen = new Set<string>();
+  return rates
+    .filter((rate) => {
+      const key = `${rate.service}|${rate.rate}|${rate.zone || ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.rate - b.rate);
 }
 
 /* -------------------------------------------------------------------------- */
-/* TrackV2 — package tracking                                                 */
+/* Package tracking                                                           */
 /* -------------------------------------------------------------------------- */
 
 export interface TrackEvent {
@@ -190,95 +330,97 @@ export interface TrackResult {
   events: TrackEvent[];
 }
 
-function normalizeTrackEvent(detail: any): TrackEvent {
-  const parts = [
-    detail?.Event,
-    [detail?.EventCity, detail?.EventState, detail?.EventZIPCode]
-      .filter(Boolean)
-      .join(", "),
-    [detail?.EventDate, detail?.EventTime].filter(Boolean).join(" "),
-  ].filter(Boolean);
-
+function splitTimestamp(value: unknown): { date?: string; time?: string } {
+  if (!value) return {};
+  const text = String(value);
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})[T ]([^Z+]+)?/);
+  if (!match) return { date: text };
   return {
-    event: detail?.Event ? String(detail.Event) : "",
-    date: detail?.EventDate ? String(detail.EventDate) : undefined,
-    time: detail?.EventTime ? String(detail.EventTime) : undefined,
-    city: detail?.EventCity ? String(detail.EventCity) : undefined,
-    state: detail?.EventState ? String(detail.EventState) : undefined,
-    zip: detail?.EventZIPCode ? String(detail.EventZIPCode) : undefined,
-    raw: parts.join(" — "),
+    date: match[1],
+    time: match[2]?.replace(/\.\d+$/, ""),
   };
 }
 
-export async function trackPackage(
-  trackingNumber: string,
-): Promise<TrackResult> {
-  const clean = trackingNumber.replace(/\s+/g, "");
-  const xml =
-    `<TrackFieldRequest USERID="${escapeXml(USPS_USERID)}">` +
-    `<Revision>1</Revision>` +
-    `<ClientIp>127.0.0.1</ClientIp>` +
-    `<SourceId>GlobalGateway</SourceId>` +
-    `<TrackID ID="${escapeXml(clean)}"></TrackID>` +
-    `</TrackFieldRequest>`;
-
-  const parsed = await callUsps("TrackV2", xml);
-  const info = parsed?.TrackResponse?.TrackInfo;
-
-  if (!info) {
-    throw new UspsError("USPS returned no tracking information.");
-  }
-
-  if (info.Error) {
-    throw new UspsError(
-      String(info.Error.Description ?? "Tracking information not found").trim(),
-      info.Error.Number ? String(info.Error.Number) : undefined,
-    );
-  }
-
-  const detailList = Array.isArray(info.TrackDetail)
-    ? info.TrackDetail
-    : info.TrackDetail
-      ? [info.TrackDetail]
-      : [];
-
-  const events: TrackEvent[] = [];
-  if (info.TrackSummary) {
-    events.push(
-      normalizeTrackEvent(
-        typeof info.TrackSummary === "object"
-          ? info.TrackSummary
-          : { Event: String(info.TrackSummary) },
-      ),
-    );
-  }
-  for (const d of detailList) {
-    events.push(normalizeTrackEvent(d));
-  }
-
-  const summary =
-    typeof info.TrackSummary === "object"
-      ? String(info.TrackSummary.Event ?? "")
-      : String(info.TrackSummary ?? "");
+function normalizeTrackingEvent(event: JsonRecord): TrackEvent {
+  const timestamp = splitTimestamp(event?.eventTimestamp || event?.GMTTimestamp);
+  const city = event?.eventCity ? String(event.eventCity) : undefined;
+  const state = event?.eventState ? String(event.eventState) : undefined;
+  const zip = event?.eventZIPCode || event?.eventZIP;
+  const label = String(event?.eventType || event?.event || "USPS update");
+  const location = [city, state, zip].filter(Boolean).join(", ");
+  const when = [timestamp.date, timestamp.time].filter(Boolean).join(" ");
 
   return {
-    trackingNumber: String(info["@_ID"] ?? clean),
-    summary,
-    status: info.Status ? String(info.Status) : undefined,
-    expectedDelivery: info.ExpectedDeliveryDate
-      ? String(info.ExpectedDeliveryDate)
-      : undefined,
-    events: events.filter((e) => e.raw),
+    event: label,
+    date: timestamp.date,
+    time: timestamp.time,
+    city,
+    state,
+    zip: zip ? String(zip) : undefined,
+    raw: [label, location, when].filter(Boolean).join(" — "),
+  };
+}
+
+export async function trackPackage(trackingNumber: string): Promise<TrackResult> {
+  const clean = trackingNumber.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  if (!clean) {
+    throw new UspsError(
+      "Tracking number is required.",
+      "USPS_INVALID_TRACKING_NUMBER",
+      400,
+    );
+  }
+
+  const response = await callUsps<any[]>("/tracking/v3r2/tracking", {
+    method: "POST",
+    body: JSON.stringify([
+      {
+        trackingNumber: clean,
+        includeVeriPoint: true,
+      },
+    ]),
+  });
+
+  const info: JsonRecord | undefined = Array.isArray(response)
+    ? response[0]
+    : (response as any);
+  if (!info || info?.errors?.length) {
+    throw new UspsError(
+      extractErrorMessage(info, "USPS tracking information was not found."),
+      "USPS_NOT_FOUND",
+      404,
+    );
+  }
+
+  const delivery = info?.deliveryDateExpectation || {};
+  const rawEvents = Array.isArray(info?.trackingEvents)
+    ? info.trackingEvents
+    : [];
+
+  return {
+    trackingNumber: String(info?.trackingNumber || clean),
+    summary: String(info?.statusSummary || info?.status || ""),
+    status: info?.statusCategory
+      ? String(info.statusCategory)
+      : info?.status
+        ? String(info.status)
+        : undefined,
+    expectedDelivery:
+      delivery?.expectedDeliveryDate ||
+      delivery?.predictedDeliveryDate ||
+      delivery?.guaranteedDeliveryDate ||
+      undefined,
+    events: rawEvents.map(normalizeTrackingEvent),
   };
 }
 
 /* -------------------------------------------------------------------------- */
-/* Verify — address standardization / validation                             */
+/* Address standardization                                                    */
 /* -------------------------------------------------------------------------- */
 
 export interface AddressInput {
-  address1?: string; // apt/suite (USPS Address1)
-  address2: string; // street address (USPS Address2)
+  address1?: string;
+  address2: string;
   city: string;
   state: string;
   zip5?: string;
@@ -298,45 +440,48 @@ export interface VerifiedAddress {
 export async function verifyAddress(
   input: AddressInput,
 ): Promise<VerifiedAddress> {
-  const xml =
-    `<AddressValidateRequest USERID="${escapeXml(USPS_USERID)}">` +
-    `<Revision>1</Revision>` +
-    `<Address ID="0">` +
-    `<Address1>${escapeXml(input.address1 ?? "")}</Address1>` +
-    `<Address2>${escapeXml(input.address2)}</Address2>` +
-    `<City>${escapeXml(input.city)}</City>` +
-    `<State>${escapeXml(input.state)}</State>` +
-    `<Zip5>${escapeXml(input.zip5 ?? "")}</Zip5>` +
-    `<Zip4>${escapeXml(input.zip4 ?? "")}</Zip4>` +
-    `</Address>` +
-    `</AddressValidateRequest>`;
+  const query = new URLSearchParams({
+    streetAddress: input.address2,
+    state: input.state.toUpperCase(),
+  });
+  if (input.address1) query.set("secondaryAddress", input.address1);
+  if (input.city) query.set("city", input.city);
+  if (input.zip5) query.set("ZIPCode", input.zip5);
+  if (input.zip4) query.set("ZIPPlus4", input.zip4);
 
-  const parsed = await callUsps("Verify", xml);
-  const address = parsed?.AddressValidateResponse?.Address;
-
-  if (!address) {
-    throw new UspsError("USPS returned no address information.");
-  }
-
-  if (address.Error) {
+  const result = await callUsps<JsonRecord>(
+    `/addresses/v3/address?${query.toString()}`,
+  );
+  const address = result?.address;
+  if (!address?.streetAddress) {
     throw new UspsError(
-      String(address.Error.Description ?? "Address could not be verified").trim(),
-      address.Error.Number ? String(address.Error.Number) : undefined,
+      "USPS did not return a standardized address.",
+      "USPS_ADDRESS_NOT_FOUND",
+      404,
     );
   }
 
   return {
-    address1: address.Address1 ? String(address.Address1) : undefined,
-    address2: String(address.Address2 ?? ""),
-    city: String(address.City ?? ""),
-    state: String(address.State ?? ""),
-    zip5: String(address.Zip5 ?? ""),
-    zip4: address.Zip4 ? String(address.Zip4) : undefined,
-    returnText: address.ReturnText ? String(address.ReturnText) : undefined,
+    address1: address.secondaryAddress
+      ? String(address.secondaryAddress)
+      : undefined,
+    address2: String(
+      address.streetAddressAbbreviation || address.streetAddress || "",
+    ),
+    city: String(address.city || address.cityAbbreviation || ""),
+    state: String(address.state || ""),
+    zip5: String(address.ZIPCode || ""),
+    zip4: address.ZIPPlus4 ? String(address.ZIPPlus4) : undefined,
+    returnText:
+      result?.additionalInfo?.returnCodeText ||
+      result?.additionalInfo?.secondaryInfo ||
+      undefined,
   };
 }
 
 export const uspsConfig = {
-  endpoint: USPS_ENDPOINT,
-  hasUserId: Boolean(USPS_USERID),
+  provider: "USPS REST API v3",
+  environment: isTestEnvironment ? "test" : "production",
+  baseUrl: USPS_API_BASE_URL,
+  configured: Boolean(USPS_CLIENT_ID && USPS_CLIENT_SECRET),
 };
