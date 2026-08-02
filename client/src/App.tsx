@@ -1,4 +1,3 @@
-
 import { Switch, Route } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
@@ -6,25 +5,22 @@ import { Toaster } from "@/components/ui/toaster";
 import Layout from "./components/Layout";
 import NotFound from "./pages/not-found";
 
-// Home & Landing
 import Landing from "./pages/Landing";
 import Home from "./pages/Home";
 
-// Logistics
 import LogisticsHome from "./pages/logistics/LogisticsHome";
 import ShippingCalculator from "./pages/logistics/ShippingCalculator";
 import BookShipping from "./pages/logistics/BookShipping";
 import Tracking from "./pages/logistics/Tracking";
 import LogisticsFAQ from "./pages/logistics/FAQ";
 import USPSServices from "./pages/logistics/USPSServices";
+import WarehouseForwarding from "./pages/logistics/WarehouseForwarding";
 
-// Real Estate
 import RealEstateHome from "./pages/real-estate/RealEstateHome";
 import Listings from "./pages/real-estate/Listings";
 import PropertyDetail from "./pages/real-estate/PropertyDetail";
 import LeaseRequest from "./pages/real-estate/LeaseRequest";
 
-// Legal Services
 import LegalHome from "./pages/legal-services/LegalHome";
 import Contracts from "./pages/legal-services/Contracts";
 import Regulatory from "./pages/legal-services/Regulatory";
@@ -33,27 +29,22 @@ import BusinessSupport from "./pages/legal-services/BusinessSupport";
 import RiskInsurance from "./pages/legal-services/RiskInsurance";
 import RequestSupport from "./pages/legal-services/RequestSupport";
 
-// About
 import About from "./pages/about/About";
 import VisionMission from "./pages/about/VisionMission";
 import GlobalFootprint from "./pages/about/GlobalFootprint";
 import Partners from "./pages/about/Partners";
 
-// Contact
 import Contact from "./pages/contact/Contact";
 import General from "./pages/contact/General";
 import Offices from "./pages/contact/Offices";
 import Support from "./pages/contact/Support";
 
-// Payments
 import PaymentMethods from "./pages/payments/PaymentMethods";
 import PaymentHistory from "./pages/payments/PaymentHistory";
 
-// Legal Pages
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import TermsOfService from "./pages/legal/TermsOfService";
 
-// Dashboard
 import UserDashboard from "./pages/dashboard/UserDashboard";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 
@@ -65,21 +56,19 @@ export default function App() {
           <Route path="/" component={Landing} />
           <Route path="/home" component={Home} />
 
-          {/* Logistics Routes */}
           <Route path="/logistics" component={LogisticsHome} />
           <Route path="/logistics/shipping-calculator" component={ShippingCalculator} />
           <Route path="/logistics/book-shipping" component={BookShipping} />
+          <Route path="/logistics/warehouse-forwarding" component={WarehouseForwarding} />
           <Route path="/logistics/tracking" component={Tracking} />
           <Route path="/logistics/faq" component={LogisticsFAQ} />
           <Route path="/logistics/usps-services" component={USPSServices} />
 
-          {/* Real Estate Routes */}
           <Route path="/real-estate" component={RealEstateHome} />
           <Route path="/real-estate/listings" component={Listings} />
           <Route path="/real-estate/property/:id" component={PropertyDetail} />
           <Route path="/real-estate/lease-request" component={LeaseRequest} />
 
-          {/* Legal Services Routes */}
           <Route path="/legal-services" component={LegalHome} />
           <Route path="/legal-services/contracts" component={Contracts} />
           <Route path="/legal-services/regulatory" component={Regulatory} />
@@ -88,31 +77,25 @@ export default function App() {
           <Route path="/legal-services/risk-insurance" component={RiskInsurance} />
           <Route path="/legal-services/request-support" component={RequestSupport} />
 
-          {/* About Routes */}
           <Route path="/about" component={About} />
           <Route path="/about/vision-mission" component={VisionMission} />
           <Route path="/about/global-footprint" component={GlobalFootprint} />
           <Route path="/about/partners" component={Partners} />
 
-          {/* Contact Routes */}
           <Route path="/contact" component={Contact} />
           <Route path="/contact/general" component={General} />
           <Route path="/contact/offices" component={Offices} />
           <Route path="/contact/support" component={Support} />
 
-          {/* Payment Routes */}
           <Route path="/payments" component={PaymentMethods} />
           <Route path="/payments/history" component={PaymentHistory} />
 
-          {/* Legal Pages */}
           <Route path="/legal/privacy-policy" component={PrivacyPolicy} />
           <Route path="/legal/terms-of-service" component={TermsOfService} />
 
-          {/* Dashboard Routes */}
           <Route path="/auth/account-dashboard" component={UserDashboard} />
           <Route path="/admin/dashboard" component={AdminDashboard} />
 
-          {/* 404 */}
           <Route component={NotFound} />
         </Switch>
       </Layout>
