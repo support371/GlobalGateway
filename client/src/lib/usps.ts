@@ -1,4 +1,4 @@
-// Client helpers for the USPS Web Tools endpoints exposed by our server.
+// Client helpers for the USPS REST API endpoints exposed by our server.
 
 export interface UspsRate {
   service: string;
@@ -36,9 +36,11 @@ export interface UspsVerifiedAddress {
   returnText?: string;
 }
 
-// USPS "Authorization failure" — the USERID is valid but the Web Tools API
-// has not yet been approved/activated by USPS for production use.
-export const USPS_AUTH_PENDING_CODE = "80040B1A";
+const USPS_SETUP_CODES = new Set([
+  "USPS_NOT_CONFIGURED",
+  "USPS_AUTH_FAILED",
+  "USPS_ACCESS_DENIED",
+]);
 
 export class UspsRequestError extends Error {
   constructor(
@@ -50,29 +52,28 @@ export class UspsRequestError extends Error {
     this.name = "UspsRequestError";
   }
 
-  /** True when USPS rejected the credentials (access not yet activated). */
   get isAccessPending() {
-    return this.code === USPS_AUTH_PENDING_CODE;
+    return Boolean(this.code && USPS_SETUP_CODES.has(this.code));
   }
 }
 
 async function uspsFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
+  const response = await fetch(url, {
     credentials: "include",
     ...init,
   });
 
   let body: any = null;
   try {
-    body = await res.json();
+    body = await response.json();
   } catch {
-    // ignore parse errors, handled below
+    // The status and fallback message below handle non-JSON responses.
   }
 
-  if (!res.ok) {
+  if (!response.ok) {
     throw new UspsRequestError(
-      body?.message || `Request failed (${res.status})`,
-      res.status,
+      body?.message || `Request failed (${response.status})`,
+      response.status,
       body?.code,
     );
   }
@@ -84,7 +85,11 @@ export function getUspsRates(input: {
   originZip: string;
   destinationZip: string;
   weightLbs: number;
+  length?: number;
+  width?: number;
+  height?: number;
   service?: string;
+  priceType?: "RETAIL" | "COMMERCIAL";
 }): Promise<{ rates: UspsRate[] }> {
   return uspsFetch("/api/usps/rates", {
     method: "POST",
