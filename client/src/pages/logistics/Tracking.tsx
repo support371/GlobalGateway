@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPin, Package, Search, CheckCircle, Truck, Info, Clock } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { trackUspsPackage, UspsRequestError, type UspsTrackResult } from "@/lib/usps";
 import type { Shipment } from "@shared/schema";
@@ -33,14 +32,27 @@ export default function Tracking() {
   });
 
   const lookupInternalShipment = async (trackingNumber: string) => {
-    try {
-      const response = await apiRequest("GET", `/api/shipments/track/${trackingNumber}`);
-      const result = await response.json();
-      setShipment(result);
-      return true;
-    } catch {
-      return false;
+    const response = await fetch(
+      `/api/shipments/track/${encodeURIComponent(trackingNumber)}`,
+      { credentials: "include" },
+    );
+
+    if (response.status === 404) return false;
+
+    if (!response.ok) {
+      let message = "Unable to check GlobalGateway shipment records.";
+      try {
+        const body = await response.json();
+        if (typeof body?.message === "string") message = body.message;
+      } catch {
+        // Keep the safe fallback message for non-JSON failures.
+      }
+      throw new Error(message);
     }
+
+    const result = (await response.json()) as Shipment;
+    setShipment(result);
+    return true;
   };
 
   const onSubmit = async (data: TrackingForm) => {
@@ -52,22 +64,38 @@ export default function Tracking() {
 
     const trackingNumber = data.trackingNumber.trim();
 
+    const checkInternalRecords = async (): Promise<boolean | null> => {
+      try {
+        return await lookupInternalShipment(trackingNumber);
+      } catch (error) {
+        toast({
+          title: "Internal Tracking Unavailable",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Unable to check GlobalGateway shipment records.",
+          variant: "destructive",
+        });
+        return null;
+      }
+    };
+
     try {
       const result = await trackUspsPackage(trackingNumber);
       setUspsResult(result);
     } catch (err) {
       if (err instanceof UspsRequestError && err.isAccessPending) {
-        // USPS credentials not yet activated — fall back to internal records.
+        // USPS credentials are missing, invalid, or not authorized yet.
         setAccessPending(true);
-        const found = await lookupInternalShipment(trackingNumber);
-        if (!found) setNotFound(true);
+        const found = await checkInternalRecords();
+        if (found === false) setNotFound(true);
       } else {
-        // USPS did not find it — try our own shipment records.
-        const found = await lookupInternalShipment(trackingNumber);
-        if (!found) {
+        // A confirmed carrier miss can still exist in GlobalGateway records.
+        const found = await checkInternalRecords();
+        if (found === false) {
           if (err instanceof UspsRequestError && err.status >= 500) {
             toast({
-              title: "Tracking Failed",
+              title: "USPS Tracking Unavailable",
               description: err.message,
               variant: "destructive",
             });
@@ -115,7 +143,7 @@ export default function Tracking() {
             Track Your Shipment
           </h1>
           <p className="text-muted-foreground" data-testid="text-tracking-description">
-            Real-time tracking powered by USPS Web Tools
+            Real-time carrier updates from the USPS Tracking REST API
           </p>
         </div>
 
@@ -158,12 +186,11 @@ export default function Tracking() {
         {accessPending && (
           <Alert className="mb-8 border-primary/40 bg-primary/5">
             <Info className="h-4 w-4" />
-            <AlertTitle>USPS live tracking pending activation</AlertTitle>
+            <AlertTitle>USPS live tracking is not authorized yet</AlertTitle>
             <AlertDescription>
-              The USPS Web Tools connection is configured, but USPS has not yet
-              activated API access for this account. Live carrier tracking will
-              appear here automatically once approved. In the meantime, we&apos;ve
-              checked your GlobalGateway shipment records.
+              Add valid USPS OAuth credentials to the deployment and confirm that
+              the Tracking API is enabled for the application. We also checked your
+              GlobalGateway shipment records for this tracking number.
             </AlertDescription>
           </Alert>
         )}
