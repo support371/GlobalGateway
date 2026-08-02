@@ -19,6 +19,7 @@ export async function createApp() {
   app.use((req, res, next) => {
     const start = Date.now();
     const path = req.path;
+    const containsSensitiveCarrierData = path.startsWith("/api/usps/");
     let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
     const originalResJson = res.json;
@@ -31,7 +32,9 @@ export async function createApp() {
       const duration = Date.now() - start;
       if (path.startsWith("/api")) {
         let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        if (capturedJsonResponse) {
+        // USPS responses can contain street addresses and package locations.
+        // Keep operational metadata while preventing carrier data from entering logs.
+        if (capturedJsonResponse && !containsSensitiveCarrierData) {
           logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
         }
         if (logLine.length > 80) {
