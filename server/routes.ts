@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertShipmentSchema, insertLeaseRequestSchema, insertLegalRequestSchema, insertPropertySchema } from "@shared/schema";
 import { registerPaymentRoutes } from "./payments";
+import { z } from "zod";
+import { getRates, trackPackage, verifyAddress, UspsError } from "./usps";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -252,6 +254,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating legal request:", error);
       res.status(500).json({ message: "Failed to update legal request" });
+    }
+  });
+
+  /* ---------------------------------------------------------------------- */
+  /* USPS Web Tools routes (public)                                         */
+  /* ---------------------------------------------------------------------- */
+
+  const zip5 = z.string().regex(/^\d{5}$/, "Enter a valid 5-digit ZIP code");
+
+  const rateRequestSchema = z.object({
+    originZip: zip5,
+    destinationZip: zip5,
+    weightLbs: z.coerce.number().positive("Weight must be greater than 0").max(70, "USPS packages must be 70 lbs or less"),
+    service: z.string().optional(),
+    container: z.string().optional(),
+  });
+
+  // Get live USPS domestic rates (RateV4)
+  app.post("/api/usps/rates", async (req, res) => {
+    try {
+      const data = rateRequestSchema.parse(req.body);
+      const rates = await getRates(data);
+      res.json({ rates });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0]?.message ?? "Invalid request" });
+      }
+      if (error instanceof UspsError) {
+        return res.status(502).json({ message: error.message, code: error.code });
+      }
+      console.error("USPS rate error:", error);
+      res.status(500).json({ message: "Failed to fetch USPS rates" });
+    }
+  });
+
+  // Track a USPS package (TrackV2)
+  app.get("/api/usps/track/:trackingNumber", async (req, res) => {
+    try {
+      const trackingNumber = String(req.params.trackingNumber || "").trim();
+      if (!trackingNumber) {
+        return res.status(400).json({ message: "Tracking number is required" });
+      }
+      const result = await trackPackage(trackingNumber);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof UspsError) {
+        return res.status(404).json({ message: error.message, code: error.code });
+      }
+      console.error("USPS tracking error:", error);
+      res.status(500).json({ message: "Failed to track package" });
+    }
+  });
+
+  // Verify / standardize a US address (Verify)
+  const verifyAddressSchema = z.object({
+    address1: z.string().optional(),
+    address2: z.string().min(1, "Street address is required"),
+    city: z.string().min(1, "City is required"),
+    state: z.string().min(2, "State is required").max(2, "Use the 2-letter state code"),
+    zip5: z.string().optional(),
+    zip4: z.string().optional(),
+  });
+
+  app.post("/api/usps/verify-address", async (req, res) => {
+    try {
+      const data = verifyAddressSchema.parse(req.body);
+      const address = await verifyAddress(data);
+      res.json({ address });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0]?.message ?? "Invalid address" });
+      }
+      if (error instanceof UspsError) {
+        return res.status(422).json({ message: error.message, code: error.code });
+      }
+      console.error("USPS address verification error:", error);
+      res.status(500).json({ message: "Failed to verify address" });
     }
   });
 

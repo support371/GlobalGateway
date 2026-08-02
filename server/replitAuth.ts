@@ -18,31 +18,46 @@ const getOidcConfig = memoize(
   { maxAge: 3600 * 1000 }
 );
 
+// Replit-managed OIDC auth is only available when running on Replit.
+// Detect its presence so the app can still boot in other environments
+// (local dev, Vercel preview, etc.).
+export const isReplitAuthConfigured = Boolean(
+  process.env.REPLIT_DOMAINS && process.env.REPL_ID,
+);
+
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  
-  // Use pooled connection URL for better reliability
-  const dbUrl = process.env.DATABASE_URL?.replace('.us-east-2', '-pooler.us-east-2') || process.env.DATABASE_URL;
-  
-  const sessionStore = new pgStore({
-    conString: dbUrl,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-    errorLog: (err: Error) => {
-      console.error('Session store error:', err.message);
-    },
-  });
-  
+  const secret = process.env.SESSION_SECRET || "globalgateway-dev-session-secret";
+
+  // Use a Postgres-backed store when a database is available, otherwise
+  // fall back to an in-memory store so the server can still boot.
+  let sessionStore: session.Store | undefined;
+  if (process.env.DATABASE_URL) {
+    const pgStore = connectPg(session);
+    const dbUrl =
+      process.env.DATABASE_URL?.replace(".us-east-2", "-pooler.us-east-2") ||
+      process.env.DATABASE_URL;
+
+    sessionStore = new pgStore({
+      conString: dbUrl,
+      createTableIfMissing: false,
+      ttl: sessionTtl,
+      tableName: "sessions",
+      errorLog: (err: Error) => {
+        console.error("Session store error:", err.message);
+      },
+    });
+  }
+
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      // Only require HTTPS-only cookies in production so sessions work in dev/preview.
+      secure: process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
     },
   });
@@ -71,13 +86,33 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express) {
-  if (!process.env.REPLIT_DOMAINS) {
-    throw new Error("Environment variable REPLIT_DOMAINS not provided");
-  }
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  passport.serializeUser((user: Express.User, cb) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+
+  // When Replit-managed OIDC is not configured (e.g. local dev or Vercel
+  // preview), skip the OIDC strategy setup so the server can still boot and
+  // serve public routes such as the USPS Web Tools endpoints.
+  if (!isReplitAuthConfigured) {
+    console.warn(
+      "[auth] REPLIT_DOMAINS/REPL_ID not set — Replit OIDC login is disabled. " +
+        "Public routes still work; protected routes will require login.",
+    );
+
+    app.get("/api/login", (_req, res) => {
+      res
+        .status(503)
+        .json({ message: "Login is not available in this environment." });
+    });
+    app.get("/api/logout", (req, res) => {
+      req.logout(() => res.redirect("/"));
+    });
+    return;
+  }
 
   const config = await getOidcConfig();
 
@@ -104,9 +139,6 @@ export async function setupAuth(app: Express) {
     );
     passport.use(strategy);
   }
-
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {

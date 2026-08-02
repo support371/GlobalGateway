@@ -4,51 +4,77 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Package, Search, Clock, CheckCircle, Truck } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { MapPin, Package, Search, CheckCircle, Truck, Info, Clock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { trackUspsPackage, UspsRequestError, type UspsTrackResult } from "@/lib/usps";
 import type { Shipment } from "@shared/schema";
 
 const trackingSchema = z.object({
   trackingNumber: z.string().min(1, "Tracking number is required"),
 });
-
 type TrackingForm = z.infer<typeof trackingSchema>;
 
 export default function Tracking() {
+  const [uspsResult, setUspsResult] = useState<UspsTrackResult | null>(null);
   const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [accessPending, setAccessPending] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<TrackingForm>({
     resolver: zodResolver(trackingSchema),
-    defaultValues: {
-      trackingNumber: "",
-    },
+    defaultValues: { trackingNumber: "" },
   });
+
+  const lookupInternalShipment = async (trackingNumber: string) => {
+    try {
+      const response = await apiRequest("GET", `/api/shipments/track/${trackingNumber}`);
+      const result = await response.json();
+      setShipment(result);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   const onSubmit = async (data: TrackingForm) => {
     setIsTracking(true);
     setNotFound(false);
+    setAccessPending(false);
     setShipment(null);
+    setUspsResult(null);
+
+    const trackingNumber = data.trackingNumber.trim();
 
     try {
-      const response = await apiRequest("GET", `/api/shipments/track/${data.trackingNumber}`);
-      const result = await response.json();
-      setShipment(result);
-    } catch (error: any) {
-      if (error.message.includes("404")) {
-        setNotFound(true);
+      const result = await trackUspsPackage(trackingNumber);
+      setUspsResult(result);
+    } catch (err) {
+      if (err instanceof UspsRequestError && err.isAccessPending) {
+        // USPS credentials not yet activated — fall back to internal records.
+        setAccessPending(true);
+        const found = await lookupInternalShipment(trackingNumber);
+        if (!found) setNotFound(true);
       } else {
-        toast({
-          title: "Tracking Failed",
-          description: "Unable to track shipment. Please try again.",
-          variant: "destructive",
-        });
+        // USPS did not find it — try our own shipment records.
+        const found = await lookupInternalShipment(trackingNumber);
+        if (!found) {
+          if (err instanceof UspsRequestError && err.status >= 500) {
+            toast({
+              title: "Tracking Failed",
+              description: err.message,
+              variant: "destructive",
+            });
+          } else {
+            setNotFound(true);
+          }
+        }
       }
     } finally {
       setIsTracking(false);
@@ -62,27 +88,18 @@ export default function Tracking() {
       delivered: { label: "Delivered", variant: "default" as const },
       cancelled: { label: "Cancelled", variant: "destructive" as const },
     };
-
     const statusInfo = statusMap[status as keyof typeof statusMap] || statusMap.pending;
     return (
-      <Badge variant={statusInfo.variant} className={status === "delivered" ? "bg-accent hover:bg-accent" : ""}>
+      <Badge
+        variant={statusInfo.variant}
+        className={status === "delivered" ? "bg-accent hover:bg-accent" : ""}
+      >
         {statusInfo.label}
       </Badge>
     );
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Clock className="h-5 w-5 text-secondary-foreground" />;
-      case "in_transit":
-        return <Truck className="h-5 w-5 text-primary" />;
-      case "delivered":
-        return <CheckCircle className="h-5 w-5 text-accent" />;
-      default:
-        return <Package className="h-5 w-5 text-muted-foreground" />;
-    }
-  };
+  const hasResult = uspsResult || shipment;
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -98,7 +115,7 @@ export default function Tracking() {
             Track Your Shipment
           </h1>
           <p className="text-muted-foreground" data-testid="text-tracking-description">
-            Enter your tracking number to get real-time updates
+            Real-time tracking powered by USPS Web Tools
           </p>
         </div>
 
@@ -112,16 +129,16 @@ export default function Tracking() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col sm:flex-row gap-4">
                 <FormField
                   control={form.control}
                   name="trackingNumber"
                   render={({ field }) => (
                     <FormItem className="flex-1">
                       <FormControl>
-                        <Input 
-                          placeholder="Enter tracking number (e.g., GBG123456789ABC)" 
-                          {...field} 
+                        <Input
+                          placeholder="Enter USPS tracking number (e.g. 9400 1000 0000 0000 0000 00)"
+                          {...field}
                           data-testid="input-tracking-number"
                         />
                       </FormControl>
@@ -129,11 +146,7 @@ export default function Tracking() {
                     </FormItem>
                   )}
                 />
-                <Button 
-                  type="submit" 
-                  disabled={isTracking}
-                  data-testid="button-track"
-                >
+                <Button type="submit" disabled={isTracking} data-testid="button-track">
                   {isTracking ? "Tracking..." : "Track"}
                 </Button>
               </form>
@@ -141,26 +154,99 @@ export default function Tracking() {
           </CardContent>
         </Card>
 
-        {/* Tracking Results */}
-        {shipment && (
+        {/* USPS access pending */}
+        {accessPending && (
+          <Alert className="mb-8 border-primary/40 bg-primary/5">
+            <Info className="h-4 w-4" />
+            <AlertTitle>USPS live tracking pending activation</AlertTitle>
+            <AlertDescription>
+              The USPS Web Tools connection is configured, but USPS has not yet
+              activated API access for this account. Live carrier tracking will
+              appear here automatically once approved. In the meantime, we&apos;ve
+              checked your GlobalGateway shipment records.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* USPS Tracking Results */}
+        {uspsResult && (
+          <Card data-testid="card-usps-tracking-result">
+            <CardHeader>
+              <div className="flex justify-between items-start gap-4">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <Truck className="h-5 w-5 text-primary" />
+                    <span className="ml-2 break-all">
+                      Tracking: {uspsResult.trackingNumber}
+                    </span>
+                  </CardTitle>
+                  <p className="text-muted-foreground mt-1">USPS Carrier Tracking</p>
+                </div>
+                {uspsResult.status && <Badge variant="default">{uspsResult.status}</Badge>}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {uspsResult.expectedDelivery && (
+                <div className="mb-6 flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-muted-foreground">Expected delivery:</span>
+                  <span className="font-medium">{uspsResult.expectedDelivery}</span>
+                </div>
+              )}
+
+              {uspsResult.summary && (
+                <div className="mb-6 rounded-lg border border-primary/40 bg-primary/5 p-4">
+                  <p className="font-medium">{uspsResult.summary}</p>
+                </div>
+              )}
+
+              <h3 className="font-semibold mb-4">Tracking History</h3>
+              <ol className="relative border-l border-border pl-6 space-y-6">
+                {uspsResult.events.map((e, i) => (
+                  <li key={i} className="relative" data-testid={`track-event-${i}`}>
+                    <span
+                      className={`absolute -left-[27px] flex h-4 w-4 items-center justify-center rounded-full ${
+                        i === 0 ? "bg-primary" : "bg-muted-foreground/40"
+                      }`}
+                    />
+                    <p className="font-medium leading-snug">{e.event}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {[
+                        [e.city, e.state, e.zip].filter(Boolean).join(", "),
+                        [e.date, e.time].filter(Boolean).join(" "),
+                      ]
+                        .filter(Boolean)
+                        .join(" • ")}
+                    </p>
+                  </li>
+                ))}
+                {uspsResult.events.length === 0 && (
+                  <li className="text-sm text-muted-foreground">
+                    No tracking events are available yet for this package.
+                  </li>
+                )}
+              </ol>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Internal Shipment Results (fallback) */}
+        {shipment && !uspsResult && (
           <Card data-testid="card-tracking-result">
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="flex items-center">
-                    {getStatusIcon(shipment.status ?? "pending")}
+                    <Package className="h-5 w-5 text-muted-foreground" />
                     <span className="ml-2">Tracking: {shipment.trackingNumber}</span>
                   </CardTitle>
-                  <p className="text-muted-foreground mt-1">
-                    {shipment.service} Service
-                  </p>
+                  <p className="text-muted-foreground mt-1">{shipment.service} Service</p>
                 </div>
                 {getStatusBadge(shipment.status ?? "pending")}
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-6">
-                {/* Shipment Details */}
                 <div>
                   <h3 className="font-semibold mb-4">Shipment Details</h3>
                   <div className="space-y-3">
@@ -176,12 +262,6 @@ export default function Tracking() {
                       <span className="text-muted-foreground">Weight:</span>
                       <span data-testid="text-weight">{shipment.weight} kg</span>
                     </div>
-                    {shipment.dimensions && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Dimensions:</span>
-                        <span data-testid="text-dimensions">{shipment.dimensions}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Cost:</span>
                       <span data-testid="text-cost">
@@ -190,15 +270,15 @@ export default function Tracking() {
                     </div>
                   </div>
                 </div>
-
-                {/* Timeline */}
                 <div>
                   <h3 className="font-semibold mb-4">Delivery Timeline</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Booked:</span>
                       <span data-testid="text-created">
-                        {shipment.createdAt ? new Date(shipment.createdAt).toLocaleDateString() : "-"}
+                        {shipment.createdAt
+                          ? new Date(shipment.createdAt).toLocaleDateString()
+                          : "-"}
                       </span>
                     </div>
                     {shipment.estimatedDelivery && (
@@ -209,40 +289,28 @@ export default function Tracking() {
                         </span>
                       </div>
                     )}
-                    {shipment.actualDelivery && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Delivered:</span>
-                        <span className="text-accent font-medium" data-testid="text-actual-delivery">
-                          {new Date(shipment.actualDelivery!).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Status Progress */}
-              <div className="mt-8">
-                <h3 className="font-semibold mb-4">Tracking History</h3>
-                <div className="space-y-4">
-                  <div className={`flex items-center p-3 rounded-lg border ${
-                    shipment.status === "delivered" ? "bg-accent/10 border-accent" : 
-                    shipment.status === "in_transit" ? "bg-primary/10 border-primary" : 
-                    "bg-muted border-border"
-                  }`} data-testid="status-current">
-                    {getStatusIcon(shipment.status ?? "pending")}
-                    <div className="ml-3">
-                      <p className="font-medium">
-                        {shipment.status === "pending" && "Package ready for pickup"}
-                        {shipment.status === "in_transit" && "Package in transit"}
-                        {shipment.status === "delivered" && "Package delivered"}
-                        {shipment.status === "cancelled" && "Shipment cancelled"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {shipment.updatedAt ? new Date(shipment.updatedAt).toLocaleString() : "-"}
-                      </p>
-                    </div>
-                  </div>
+              <div className="mt-8 flex items-center rounded-lg border bg-muted p-3">
+                {shipment.status === "delivered" ? (
+                  <CheckCircle className="h-5 w-5 text-accent" />
+                ) : (
+                  <Truck className="h-5 w-5 text-primary" />
+                )}
+                <div className="ml-3">
+                  <p className="font-medium">
+                    {shipment.status === "pending" && "Package ready for pickup"}
+                    {shipment.status === "in_transit" && "Package in transit"}
+                    {shipment.status === "delivered" && "Package delivered"}
+                    {shipment.status === "cancelled" && "Shipment cancelled"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {shipment.updatedAt
+                      ? new Date(shipment.updatedAt).toLocaleString()
+                      : "-"}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -250,25 +318,24 @@ export default function Tracking() {
         )}
 
         {/* Not Found Message */}
-        {notFound && (
+        {notFound && !hasResult && (
           <Card data-testid="card-not-found">
             <CardContent className="py-16 text-center">
               <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                Shipment Not Found
-              </h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Shipment Not Found</h3>
               <p className="text-muted-foreground mb-4">
-                We couldn't find a shipment with that tracking number.
+                We couldn&apos;t find tracking information for that number.
               </p>
               <p className="text-sm text-muted-foreground">
-                Please check the tracking number and try again, or contact our support team if you continue to have issues.
+                Please double-check the tracking number and try again, or contact our
+                support team if you continue to have issues.
               </p>
             </CardContent>
           </Card>
         )}
 
-        {/* Sample Tracking Numbers */}
-        {!shipment && !notFound && (
+        {/* Help */}
+        {!hasResult && !notFound && (
           <Card data-testid="card-sample-tracking">
             <CardHeader>
               <CardTitle>Need Help?</CardTitle>
@@ -276,24 +343,21 @@ export default function Tracking() {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-medium mb-2">Tracking Number Format</h4>
+                  <h4 className="font-medium mb-2">USPS Tracking Numbers</h4>
                   <p className="text-sm text-muted-foreground">
-                    Our tracking numbers follow this format: GBG + 13 characters (letters and numbers)
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Example: GBG123456789ABC
+                    USPS tracking numbers are typically 20-22 digits (e.g. starting with
+                    9400, 9205, or 9114). Enter it above to see live carrier updates.
                   </p>
                 </div>
-                
                 <div>
                   <h4 className="font-medium mb-2">Having Issues?</h4>
                   <p className="text-sm text-muted-foreground mb-2">
-                    If you can't find your tracking number, check:
+                    If you can&apos;t find your tracking number, check:
                   </p>
                   <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                    <li>• Your booking confirmation email</li>
-                    <li>• Your account dashboard</li>
-                    <li>• SMS notifications if enabled</li>
+                    <li>Your booking confirmation email</li>
+                    <li>Your account dashboard</li>
+                    <li>SMS notifications if enabled</li>
                   </ul>
                 </div>
               </div>
