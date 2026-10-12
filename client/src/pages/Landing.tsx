@@ -232,22 +232,23 @@ export default function Landing() {
                 Global Reach, Local Expertise
               </h2>
               <p className="text-xl text-muted-foreground mb-8 leading-relaxed" data-testid="text-global-reach-description">
-                With offices spanning three continents and partnerships in over 50 countries, 
-                we provide localized support backed by global infrastructure.
+                Plan U.S. warehouse forwarding and domestic carrier requests with transparent
+                approval steps. International destination support depends on the fulfillment provider,
+                permitted goods, and the selected carrier.
               </p>
               
               <div className="grid sm:grid-cols-3 gap-6 mb-8">
-                <div className="text-center" data-testid="stat-countries">
-                  <div className="text-3xl font-bold text-primary">180+</div>
-                  <div className="text-muted-foreground">Countries Served</div>
+                <div className="rounded-lg border p-4 text-center" data-testid="stat-countries">
+                  <div className="font-bold text-primary">U.S. warehouse</div>
+                  <div className="text-sm text-muted-foreground">Receiving and forwarding requests</div>
                 </div>
-                <div className="text-center" data-testid="stat-properties">
-                  <div className="text-3xl font-bold text-accent">15,000+</div>
-                  <div className="text-muted-foreground">Properties Listed</div>
+                <div className="rounded-lg border p-4 text-center" data-testid="stat-properties">
+                  <div className="font-bold text-primary">Domestic shipping</div>
+                  <div className="text-sm text-muted-foreground">Carrier rates after authorization</div>
                 </div>
-                <div className="text-center" data-testid="stat-jurisdictions">
-                  <div className="text-3xl font-bold text-secondary-foreground">50+</div>
-                  <div className="text-muted-foreground">Legal Jurisdictions</div>
+                <div className="rounded-lg border p-4 text-center" data-testid="stat-jurisdictions">
+                  <div className="font-bold text-primary">International delivery</div>
+                  <div className="text-sm text-muted-foreground">Customs and provider review required</div>
                 </div>
               </div>
 
