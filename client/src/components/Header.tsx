@@ -25,7 +25,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50">
+    <header className="bg-card border-b border-border sticky top-0 z-50">\n      <div className="bg-primary text-primary-foreground text-xs py-2 px-4 text-center">\n        GlobalGateway is a business-services venture in the GEM Enterprise network · <a className="underline underline-offset-2 hover:text-accent" href="https://www.gemcybersecurityassist.com/" target="_blank" rel="noopener noreferrer">Visit GEM Enterprise</a>\n      </div>
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center space-x-2" data-testid="link-home">
@@ -33,8 +33,8 @@ export default function Header() {
               <Globe className="text-primary-foreground h-6 w-6" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-lg text-foreground">Global Business Gateway</span>
-              <span className="text-xs text-muted-foreground">Logistics • Real Estate • Legal</span>
+              <span className="font-bold text-lg text-foreground">GlobalGateway</span>
+              <span className="text-xs text-muted-foreground">GEM Enterprise network · Business services</span>
             </div>
           </Link>
 
