@@ -95,7 +95,7 @@ function AccessPendingNotice() {
   );
 }
 
-function RateCalculator() {
+export function RateCalculator() {
   const [rates, setRates] = useState<UspsRate[] | null>(null);
   const [accessPending, setAccessPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
