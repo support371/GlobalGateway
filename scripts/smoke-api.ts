@@ -4,6 +4,8 @@ import type { AddressInfo } from "node:net";
 
 // This smoke test must not touch a live database, purchase postage or ship goods.
 delete process.env.DATABASE_URL;
+delete process.env.USPS_CLIENT_ID;
+delete process.env.USPS_CLIENT_SECRET;
 process.env.SHIPITO_MODE = "manual";
 process.env.SHIPITO_API_ENABLED = "false";
 
@@ -35,7 +37,20 @@ try {
     });
     assert.equal(result.status, 503, `${path} must be disabled when no database exists`);
   }
-  console.log("API smoke PASS: public config works, storage-dependent writes fail closed");
+  const malformedRate = await fetch(`${origin}/api/usps/rates`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+  });
+  assert.equal(malformedRate.status, 400, "USPS input validation works even without order storage");
+
+  const unconfiguredRate = await fetch(`${origin}/api/usps/rates`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ originZip: "90503", destinationZip: "10001", weightLbs: 1 }),
+  });
+  assert.equal(unconfiguredRate.status, 503, "USPS must not call the provider without approved credentials");
+  const unconfiguredBody = await unconfiguredRate.json() as { code?: string };
+  assert.equal(unconfiguredBody.code, "USPS_NOT_CONFIGURED");
+
+  console.log("API smoke PASS: public config works, storage-dependent writes fail closed, USPS proxy stays independent");
 } finally {
   await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 }
