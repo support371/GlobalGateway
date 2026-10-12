@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { registerForwardingRoutes } from "./forwardingRoutes";
+import { registerRoutes } from "./routes.js";
+import { registerForwardingRoutes } from "./forwardingRoutes.js";
 
 function log(message: string) {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -20,35 +20,12 @@ export async function createApp() {
   app.use((req, res, next) => {
     const start = Date.now();
     const path = req.path;
-    const containsSensitiveCarrierData =
-      path.startsWith("/api/usps/") ||
-      path.startsWith("/api/forwarding-orders") ||
-      path.startsWith("/api/admin/forwarding-orders") ||
-      path.startsWith("/api/warehouse/");
-    let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-    const originalResJson = res.json;
-    res.json = function (bodyJson, ...args) {
-      capturedJsonResponse = bodyJson;
-      return originalResJson.apply(res, [bodyJson, ...args]);
-    };
-
+    // Never log API response bodies: they may contain customer, address, or payment data.
     res.on("finish", () => {
-      const duration = Date.now() - start;
       if (path.startsWith("/api")) {
-        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        // Carrier and forwarding responses can contain addresses and package data.
-        // Keep operational metadata while preventing private data from entering logs.
-        if (capturedJsonResponse && !containsSensitiveCarrierData) {
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-        }
-        if (logLine.length > 80) {
-          logLine = logLine.slice(0, 79) + "…";
-        }
-        log(logLine);
+        log(`${req.method} ${path} ${res.statusCode} in ${Date.now() - start}ms`);
       }
     });
-
     next();
   });
 
@@ -57,9 +34,10 @@ export async function createApp() {
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
-    throw err;
+    console.error("[api] Unhandled request error:", err);
+    if (!res.headersSent) {
+      res.status(status).json({ message: status >= 500 ? "Internal Server Error" : err.message || "Request failed" });
+    }
   });
 
   return app;
