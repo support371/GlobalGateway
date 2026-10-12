@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { getWarehouseConfig } from "./warehouseConfig.js";
+import { registerUspsRoutes } from "./uspsRoutes.js";
 
 function log(message: string) {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -27,6 +28,9 @@ export async function createApp() {
     });
     next();
   });
+
+  // Public USPS proxy is independent of database-backed customer orders.
+  registerUspsRoutes(app);
 
   if (process.env.DATABASE_URL) {
     // Avoid importing database-backed routes before configuration is available.
