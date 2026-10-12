@@ -50,8 +50,8 @@ export default function BookShipping() {
     },
     onSuccess: (shipment) => {
       toast({
-        title: "Shipment Booked Successfully",
-        description: `Your tracking number is: ${shipment.trackingNumber}`,
+        title: "Shipping request recorded",
+        description: "This is an internal request, not a purchased carrier label or confirmed carrier shipment.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/shipments"] });
       form.reset();
@@ -109,7 +109,7 @@ export default function BookShipping() {
             Book Shipping
           </h1>
           <p className="text-muted-foreground" data-testid="text-booking-description">
-            Schedule your shipment and get real-time tracking
+            Record a shipping request. Final carrier rates, postage and tracking require carrier confirmation.
           </p>
         </div>
 
