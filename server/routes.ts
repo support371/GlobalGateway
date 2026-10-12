@@ -177,29 +177,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/shipments/calculate', async (req, res) => {
-    try {
-      const { origin, destination, weight, service } = req.body;
-      
-      // Simple calculation logic - in production this would integrate with shipping APIs
-      const baseRate = 10;
-      const weightRate = weight * 2;
-      const serviceMultiplier = service === 'express' ? 1.5 : service === 'overnight' ? 2.5 : 1;
-      const distanceMultiplier = 1.2; // simplified
-      
-      const cost = Math.round((baseRate + weightRate) * serviceMultiplier * distanceMultiplier * 100) / 100;
-      const estimatedDays = service === 'overnight' ? 1 : service === 'express' ? 2 : 5;
-      
-      res.json({
-        cost,
-        currency: 'USD',
-        estimatedDays,
-        service
-      });
-    } catch (error) {
-      console.error("Error calculating shipping cost:", error);
-      res.status(500).json({ message: "Failed to calculate shipping cost" });
-    }
+  // Legacy estimated-rate endpoint was not a carrier quote. Fail closed instead
+  // of displaying fabricated prices or delivery commitments to customers.
+  app.post("/api/shipments/calculate", (_req, res) => {
+    return res.status(503).json({
+      code: "CARRIER_QUOTE_REQUIRED",
+      message: "Estimated pricing is disabled. Use the USPS Services page for authorized domestic quotes, or request a warehouse-forwarding quote.",
+    });
   });
 
   // Lease request routes
