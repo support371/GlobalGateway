@@ -30,20 +30,37 @@ export async function createApp() {
 
   if (process.env.DATABASE_URL) {
     // Avoid importing database-backed routes before configuration is available.
-    const [{ registerRoutes }, { registerForwardingRoutes }] = await Promise.all([
+    const [{ registerRoutes }, { registerForwardingRoutes }, { pool }] = await Promise.all([
       import("./routes.js"),
       import("./forwardingRoutes.js"),
+      import("./db.js"),
     ]);
     await registerRoutes(app);
     registerForwardingRoutes(app);
-    app.get("/api/health", (_req, res) => res.json({ status: "ok", databaseConfigured: true }));
+    app.get("/api/health", async (_req, res) => {
+      try {
+        await pool.query("SELECT 1");
+        res.set("Cache-Control", "no-store");
+        res.json({ status: "ok", databaseConfigured: true, databaseReachable: true });
+      } catch {
+        res.set("Cache-Control", "no-store");
+        res.status(503).json({
+          status: "degraded", databaseConfigured: true,
+          databaseReachable: false, code: "DATABASE_UNAVAILABLE",
+        });
+      }
+    });
   } else {
     // Read-only warehouse details remain usable; never persist orders in memory
     // or claim checkout, rate purchase, or fulfillment can work without storage.
     app.get("/api/warehouse/config", (_req, res) => res.json(getWarehouseConfig()));
-    app.get("/api/health", (_req, res) => res.status(503).json({
-      status: "degraded", databaseConfigured: false, code: "DATABASE_NOT_CONFIGURED"
-    }));
+    app.get("/api/health", (_req, res) => {
+      res.set("Cache-Control", "no-store");
+      res.status(503).json({
+        status: "degraded", databaseConfigured: false,
+        databaseReachable: false, code: "DATABASE_NOT_CONFIGURED",
+      });
+    });
     app.use("/api", (_req, res) => res.status(503).json({
       code: "DATABASE_NOT_CONFIGURED",
       message: "This service is temporarily unavailable until secure storage is configured.",
