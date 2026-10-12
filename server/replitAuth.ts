@@ -27,7 +27,11 @@ export const isReplitAuthConfigured = Boolean(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const secret = process.env.SESSION_SECRET || "globalgateway-dev-session-secret";
+  const configuredSecret = process.env.SESSION_SECRET;
+  if (process.env.NODE_ENV === "production" && (!configuredSecret || configuredSecret.length < 32)) {
+    throw new Error("SESSION_SECRET must be set to a strong random value for production sessions.");
+  }
+  const secret = configuredSecret || "globalgateway-dev-session-secret";
 
   // Use a Postgres-backed store when a database is available, otherwise
   // fall back to an in-memory store so the server can still boot.
