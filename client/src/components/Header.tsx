@@ -101,7 +101,7 @@ export default function Header() {
             ) : (
               <>
                 <a href="/api/login" className="text-foreground hover:text-primary transition-colors font-medium" data-testid="link-login">Login</a>
-                <a href="/api/login" className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md transition-colors font-medium" data-testid="button-get-started">Get Started</a>
+                <Link href="/logistics/warehouse-forwarding" className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md transition-colors font-medium" data-testid="button-get-started">Get Started</Link>
               </>
             )}
           </div>
@@ -147,7 +147,7 @@ export default function Header() {
                 ) : (
                   <>
                     <a href="/api/login" className="text-foreground hover:text-primary transition-colors font-medium" data-testid="mobile-link-login">Login</a>
-                    <a href="/api/login" className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md transition-colors font-medium text-center" data-testid="mobile-button-get-started">Get Started</a>
+                    <Link href="/logistics/warehouse-forwarding" className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md transition-colors font-medium text-center" data-testid="mobile-button-get-started">Get Started</Link>
                   </>
                 )}
               </div>
