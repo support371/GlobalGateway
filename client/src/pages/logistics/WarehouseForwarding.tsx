@@ -154,12 +154,23 @@ export default function WarehouseForwarding() {
   const [lookupEmail, setLookupEmail] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupOrder, setLookupOrder] = useState<ForwardingOrder | null>(null);
+  const [intakeStatus, setIntakeStatus] = useState<"checking" | "ready" | "unavailable">("checking");
 
   useEffect(() => {
-    fetch("/api/warehouse/config")
+    fetch("/api/warehouse/config", { cache: "no-store" })
       .then((response) => parseResponse<WarehouseConfig>(response))
       .then(setWarehouse)
       .catch(() => setWarehouse(fallbackWarehouse));
+    fetch("/api/health", { cache: "no-store" })
+      .then(async (response) => {
+        const status = await response.json().catch(() => ({}));
+        setIntakeStatus(
+          response.ok && status.databaseConfigured === true && status.databaseReachable === true
+            ? "ready"
+            : "unavailable",
+        );
+      })
+      .catch(() => setIntakeStatus("unavailable"));
   }, []);
 
   const warehouseAddress = useMemo(
@@ -186,6 +197,14 @@ export default function WarehouseForwarding() {
 
   const submitOrder = async (event: FormEvent) => {
     event.preventDefault();
+    if (intakeStatus !== "ready") {
+      toast({
+        title: "Forwarding intake is temporarily unavailable",
+        description: "Please wait until secure order registration is available. Do not send parcels without a confirmed order reference.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!form.termsAccepted) {
       toast({
         title: "Confirm the forwarding instructions",
@@ -234,6 +253,7 @@ export default function WarehouseForwarding() {
 
   const lookup = async (event: FormEvent) => {
     event.preventDefault();
+    if (intakeStatus !== "ready") return;
     setLookupLoading(true);
     setLookupOrder(null);
     try {
@@ -287,6 +307,21 @@ export default function WarehouseForwarding() {
           </CardContent>
         </Card>
 
+        {intakeStatus !== "ready" && (
+          <Card className="border-orange-300 bg-orange-50/80 dark:bg-orange-950/30" data-testid="forwarding-intake-paused">
+            <CardContent className="py-5 flex gap-3 items-start">
+              <Clock3 className="h-6 w-6 text-orange-700 shrink-0" />
+              <div className="space-y-2">
+                <p className="font-semibold">{intakeStatus === "checking" ? "Checking order intake availability" : "Online forwarding orders are temporarily paused"}</p>
+                <p className="text-sm text-muted-foreground">
+                  {intakeStatus === "checking"
+                    ? "We are confirming that secure order registration is available."
+                    : "The warehouse address is informational only until order registration and tracking are restored. Do not send a parcel or rely on a new order until you receive a confirmed GlobalGateway reference."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {createdOrder && (
           <Card className="border-green-300 bg-green-50/60 dark:bg-green-950/20">
             <CardHeader>
@@ -585,8 +620,8 @@ export default function WarehouseForwarding() {
                   </Label>
                 </div>
 
-                <Button type="submit" className="w-full" size="lg" disabled={submitting}>
-                  {submitting ? "Creating order…" : "Create forwarding order"}
+                <Button type="submit" className="w-full" size="lg" disabled={submitting || intakeStatus !== "ready"} data-testid="forwarding-submit">
+                  {submitting ? "Creating order…" : intakeStatus !== "ready" ? "Order intake unavailable" : "Create forwarding order"}
                 </Button>
               </form>
             </CardContent>
@@ -622,8 +657,8 @@ export default function WarehouseForwarding() {
                   required
                 />
               </div>
-              <Button type="submit" disabled={lookupLoading}>
-                {lookupLoading ? "Checking…" : "Check status"}
+              <Button type="submit" disabled={lookupLoading || intakeStatus !== "ready"}>
+                {lookupLoading ? "Checking…" : intakeStatus !== "ready" ? "Status lookup unavailable" : "Check status"}
               </Button>
             </form>
 
