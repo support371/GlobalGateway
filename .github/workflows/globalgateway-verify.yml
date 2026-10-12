@@ -37,3 +37,6 @@ jobs:
 
       - name: Build production bundles
         run: npm run build
+
+      - name: Verify safe API startup without a database
+        run: npm run smoke:api
