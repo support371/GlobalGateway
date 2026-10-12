@@ -68,7 +68,7 @@ export default function LogisticsHome() {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-muted-foreground mb-4">
-              Get instant quotes for your shipments with our advanced pricing calculator.
+              Check actual USPS domestic rates when access is enabled, or request a warehouse-forwarding quote.
             </p>
             <Link href="/logistics/shipping-calculator">
               <Button variant="outline" className="w-full" data-testid="button-use-calculator">
@@ -85,7 +85,7 @@ export default function LogisticsHome() {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-muted-foreground mb-4">
-              Schedule your shipments and manage all logistics from one platform.
+              Submit a shipping request for manual review. Labels and delivery are not purchased automatically.
             </p>
             <Link href="/logistics/book-shipping">
               <Button variant="outline" className="w-full" data-testid="button-book-shipment">
@@ -102,7 +102,7 @@ export default function LogisticsHome() {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-muted-foreground mb-4">
-              Track your packages in real-time with detailed status updates.
+              Look up supported carrier tracking or your warehouse order status.
             </p>
             <Link href="/logistics/tracking">
               <Button variant="outline" className="w-full" data-testid="button-track-package">
