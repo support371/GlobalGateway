@@ -19,12 +19,12 @@ export default function Landing() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <a 
-                  href="/api/login" 
+                  href="/logistics/warehouse-forwarding" 
                   className="bg-accent hover:bg-accent/90 text-accent-foreground px-8 py-4 rounded-lg text-lg font-semibold transition-colors flex items-center justify-center"
                   data-testid="button-start-journey"
                 >
                   <Rocket className="mr-2 h-5 w-5" />
-                  Start Your Journey
+                  Request Warehouse Forwarding
                 </a>
                 <Link 
                   href="/about" 
@@ -72,12 +72,12 @@ export default function Landing() {
                 </div>
                 <h3 className="text-2xl font-bold text-foreground mb-4">Global Logistics</h3>
                 <p className="text-muted-foreground mb-6 leading-relaxed">
-                  Comprehensive shipping solutions with real-time tracking, competitive rates, and seamless customs clearance across 180+ countries.
+                  Warehouse forwarding, USPS domestic rate tools subject to API approval, and international fulfillment requests through authorized carriers.
                 </p>
                 <ul className="text-left text-muted-foreground mb-6 space-y-2">
                   <li className="flex items-center">
                     <div className="w-2 h-2 bg-accent rounded-full mr-3"></div>
-                    Shipping Calculator & Booking
+                    USPS Quotes & Forwarding
                   </li>
                   <li className="flex items-center">
                     <div className="w-2 h-2 bg-accent rounded-full mr-3"></div>
@@ -180,7 +180,7 @@ export default function Landing() {
               <CardContent className="p-6 text-center">
                 <Calculator className="h-12 w-12 text-primary mb-4 mx-auto" />
                 <h3 className="font-semibold text-foreground mb-2">Shipping Calculator</h3>
-                <p className="text-muted-foreground text-sm mb-4">Get instant shipping quotes</p>
+                <p className="text-muted-foreground text-sm mb-4">Check available USPS rates</p>
                 <Link href="/logistics/shipping-calculator" className="text-primary hover:text-primary/80 font-medium" data-testid="link-calculate-now">
                   Calculate Now →
                 </Link>
@@ -278,17 +278,17 @@ export default function Landing() {
             Ready to Scale Your Global Operations?
           </h2>
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto" data-testid="text-cta-description">
-            Join thousands of businesses already using Global Business Gateway to streamline 
+            Explore GlobalGateway services to help your business organize 
             their international operations and accelerate growth.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 
-              href="/api/login" 
+              href="/logistics/warehouse-forwarding" 
               className="bg-accent hover:bg-accent/90 text-accent-foreground px-8 py-4 rounded-lg text-lg font-semibold transition-colors inline-flex items-center justify-center"
               data-testid="button-start-trial"
             >
               <Rocket className="mr-2 h-5 w-5" />
-              Start Free Trial
+              Start a Forwarding Request
             </a>
             <Link 
               href="/contact" 
