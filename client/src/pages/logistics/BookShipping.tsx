@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ArrowRight, Calculator, Clock3, PackageCheck, ShieldAlert, Warehouse } from "lucide-react";
+import { ArrowRight, Calculator, Clock3, ShieldAlert, Warehouse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
