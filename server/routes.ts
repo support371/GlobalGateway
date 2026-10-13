@@ -102,23 +102,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!shipment) {
         return res.status(404).json({ message: "Shipment not found" });
       }
-      res.json(shipment);
+      // Tracking numbers are not authorization to see addresses or payment data.
+      res.set("Cache-Control", "no-store");
+      res.json({
+        trackingNumber: shipment.trackingNumber,
+        status: shipment.status || "pending",
+        createdAt: shipment.createdAt,
+        updatedAt: shipment.updatedAt,
+        source: "globalgateway_internal",
+      });
     } catch (error) {
       console.error("Error tracking shipment:", error);
       res.status(500).json({ message: "Failed to track shipment" });
     }
   });
 
-  app.post('/api/shipments', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const validatedData = insertShipmentSchema.parse({ ...req.body, userId });
-      const shipment = await storage.createShipment(validatedData);
-      res.status(201).json(shipment);
-    } catch (error) {
-      console.error("Error creating shipment:", error);
-      res.status(500).json({ message: "Failed to create shipment" });
-    }
+  // Carrier checkout is not connected. Never accept customer-provided prices
+  // or create a shipment record that looks like a purchased carrier label.
+  app.post('/api/shipments', isAuthenticated, (_req, res) => {
+    return res.status(503).json({
+      code: "CARRIER_BOOKING_NOT_AVAILABLE",
+      message: "Direct carrier booking is not enabled. Request manual forwarding or obtain an authorized carrier quotation.",
+    });
   });
 
   app.patch('/api/shipments/:id', isAuthenticated, async (req: any, res) => {
@@ -136,29 +141,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/shipments/calculate', async (req, res) => {
-    try {
-      const { origin, destination, weight, service } = req.body;
-      
-      // Simple calculation logic - in production this would integrate with shipping APIs
-      const baseRate = 10;
-      const weightRate = weight * 2;
-      const serviceMultiplier = service === 'express' ? 1.5 : service === 'overnight' ? 2.5 : 1;
-      const distanceMultiplier = 1.2; // simplified
-      
-      const cost = Math.round((baseRate + weightRate) * serviceMultiplier * distanceMultiplier * 100) / 100;
-      const estimatedDays = service === 'overnight' ? 1 : service === 'express' ? 2 : 5;
-      
-      res.json({
-        cost,
-        currency: 'USD',
-        estimatedDays,
-        service
-      });
-    } catch (error) {
-      console.error("Error calculating shipping cost:", error);
-      res.status(500).json({ message: "Failed to calculate shipping cost" });
-    }
+  // Legacy estimated-rate endpoint was not a carrier quote. Fail closed instead
+  // of displaying fabricated prices or delivery commitments to customers.
+  app.post("/api/shipments/calculate", (_req, res) => {
+    return res.status(503).json({
+      code: "CARRIER_QUOTE_REQUIRED",
+      message: "Estimated pricing is disabled. Use the USPS Services page for authorized domestic quotes, or request a warehouse-forwarding quote.",
+    });
   });
 
   // Lease request routes

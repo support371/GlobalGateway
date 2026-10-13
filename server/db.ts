@@ -1,27 +1,28 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
-
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+/**
+ * Portable PostgreSQL connection compatible with Supabase poolers and standard
+ * PostgreSQL providers. Secrets must stay in Vercel's server environment.
+ *
+ * Use the provider's TLS-enabled connection string. Do not disable certificate
+ * verification or log the connection string.
+ */
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL must be configured before database routes are enabled.");
 }
 
-// Add connection pooling configuration with retry logic
-export const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL,
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+export const pool = new Pool({
+  connectionString: databaseUrl,
+  max: 5,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000,
 });
 
-// Handle pool errors
-pool.on('error', (err) => {
-  console.error('Unexpected database pool error:', err);
+pool.on("error", (error) => {
+  console.error("[database] A pooled connection failed:", error.name);
 });
 
 export const db = drizzle({ client: pool, schema });
