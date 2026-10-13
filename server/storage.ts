@@ -159,11 +159,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createShipment(shipment: InsertShipment): Promise<Shipment> {
-    // Generate tracking number
-    const trackingNumber = `GBG${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    // An internal request is not a carrier shipment. Carrier tracking must be
+    // assigned only after an authorized provider actually issues a label.
     const [newShipment] = await db.insert(shipments).values({
       ...shipment,
-      trackingNumber,
+      trackingNumber: null,
+      status: "pending",
     }).returning();
     return newShipment;
   }
