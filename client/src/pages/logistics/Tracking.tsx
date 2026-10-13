@@ -11,7 +11,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MapPin, Package, Search, CheckCircle, Truck, Info, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { trackUspsPackage, UspsRequestError, type UspsTrackResult } from "@/lib/usps";
-import type { Shipment } from "@shared/schema";
+type InternalStatus = {
+  trackingNumber: string | null;
+  status: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  source: "globalgateway_internal";
+};
 
 const trackingSchema = z.object({
   trackingNumber: z.string().min(1, "Tracking number is required"),
@@ -20,7 +26,7 @@ type TrackingForm = z.infer<typeof trackingSchema>;
 
 export default function Tracking() {
   const [uspsResult, setUspsResult] = useState<UspsTrackResult | null>(null);
-  const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [shipment, setShipment] = useState<InternalStatus | null>(null);
   const [accessPending, setAccessPending] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -50,7 +56,7 @@ export default function Tracking() {
       throw new Error(message);
     }
 
-    const result = (await response.json()) as Shipment;
+    const result = (await response.json()) as InternalStatus;
     setShipment(result);
     return true;
   };
@@ -257,89 +263,31 @@ export default function Tracking() {
           </Card>
         )}
 
-        {/* Internal Shipment Results (fallback) */}
+        {/* The GlobalGateway record is not proof that a carrier has accepted a parcel. */}
         {shipment && !uspsResult && (
           <Card data-testid="card-tracking-result">
             <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="flex items-center">
-                    <Package className="h-5 w-5 text-muted-foreground" />
-                    <span className="ml-2">Tracking: {shipment.trackingNumber}</span>
-                  </CardTitle>
-                  <p className="text-muted-foreground mt-1">{shipment.service} Service</p>
-                </div>
-                {getStatusBadge(shipment.status ?? "pending")}
-              </div>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-muted-foreground" />
+                Internal GlobalGateway record
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                This is an internal status only. USPS carrier tracking requires an actual carrier-issued number.
+              </p>
             </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold mb-4">Shipment Details</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Origin:</span>
-                      <span data-testid="text-origin">{shipment.origin}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Destination:</span>
-                      <span data-testid="text-destination">{shipment.destination}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Weight:</span>
-                      <span data-testid="text-weight">{shipment.weight} kg</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cost:</span>
-                      <span data-testid="text-cost">
-                        ${shipment.cost} {shipment.currency}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-4">Delivery Timeline</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Booked:</span>
-                      <span data-testid="text-created">
-                        {shipment.createdAt
-                          ? new Date(shipment.createdAt).toLocaleDateString()
-                          : "-"}
-                      </span>
-                    </div>
-                    {shipment.estimatedDelivery && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Estimated Delivery:</span>
-                        <span data-testid="text-estimated-delivery">
-                          {new Date(shipment.estimatedDelivery).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between gap-4">
+                <span>Recorded status</span>
+                {getStatusBadge(shipment.status || "pending")}
               </div>
-
-              <div className="mt-8 flex items-center rounded-lg border bg-muted p-3">
-                {shipment.status === "delivered" ? (
-                  <CheckCircle className="h-5 w-5 text-accent" />
-                ) : (
-                  <Truck className="h-5 w-5 text-primary" />
-                )}
-                <div className="ml-3">
-                  <p className="font-medium">
-                    {shipment.status === "pending" && "Package ready for pickup"}
-                    {shipment.status === "in_transit" && "Package in transit"}
-                    {shipment.status === "delivered" && "Package delivered"}
-                    {shipment.status === "cancelled" && "Shipment cancelled"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {shipment.updatedAt
-                      ? new Date(shipment.updatedAt).toLocaleString()
-                      : "-"}
-                  </p>
-                </div>
+              <div className="flex justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">Last updated</span>
+                <span>{shipment.updatedAt ? new Date(shipment.updatedAt).toLocaleString() : "Not available"}</span>
               </div>
+              <p className="text-sm text-muted-foreground">
+                For warehouse forwarding, use your GlobalGateway reference and order email
+                on the warehouse-forwarding page to request a status check.
+              </p>
             </CardContent>
           </Card>
         )}
