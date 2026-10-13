@@ -102,7 +102,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!shipment) {
         return res.status(404).json({ message: "Shipment not found" });
       }
-      res.json(shipment);
+      // Tracking numbers are not authorization to see addresses or payment data.
+      res.set("Cache-Control", "no-store");
+      res.json({
+        trackingNumber: shipment.trackingNumber,
+        status: shipment.status || "pending",
+        createdAt: shipment.createdAt,
+        updatedAt: shipment.updatedAt,
+        source: "globalgateway_internal",
+      });
     } catch (error) {
       console.error("Error tracking shipment:", error);
       res.status(500).json({ message: "Failed to track shipment" });
