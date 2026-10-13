@@ -47,7 +47,7 @@ export function getWarehouseConfig(): WarehouseConfig {
     ],
     instructions: [
       `Always include Suite #${suite} on the merchant shipping label.`,
-      "Create a forwarding order before the package arrives so it can be matched quickly.",
+      "Only send a package after online intake is available and you receive a confirmed GlobalGateway reference.",
       "Warehouse actions are reviewed manually until Shipito API access is approved.",
       "Do not send prohibited or restricted items.",
     ],
