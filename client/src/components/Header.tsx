@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -9,6 +10,15 @@ import { Globe, Truck, Building, Scale, Menu, User, LogOut, Settings, Warehouse 
 export default function Header() {
   const [location] = useLocation();
   const { user, isAuthenticated } = useAuth();
+  const [loginPublished, setLoginPublished] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/platform/capabilities", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((result) => setLoginPublished(result?.loginPublished === true))
+      .catch(() => setLoginPublished(false));
+  }, []);
+
 
   const navigation = [
     { name: "Logistics", href: "/logistics", icon: Truck },
@@ -100,7 +110,9 @@ export default function Header() {
               </DropdownMenu>
             ) : (
               <>
-                <a href="/api/login" className="text-foreground hover:text-primary transition-colors font-medium" data-testid="link-login">Login</a>
+                {loginPublished
+                  ? <a href="/api/login" className="text-foreground hover:text-primary transition-colors font-medium" data-testid="link-login">Staff Login</a>
+                  : <span className="text-xs text-muted-foreground" data-testid="login-unavailable">Staff sign-in pending</span>}
                 <Link href="/logistics/warehouse-forwarding" className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md transition-colors font-medium" data-testid="button-get-started">Get Started</Link>
               </>
             )}
@@ -146,7 +158,9 @@ export default function Header() {
                   </>
                 ) : (
                   <>
-                    <a href="/api/login" className="text-foreground hover:text-primary transition-colors font-medium" data-testid="mobile-link-login">Login</a>
+                    {loginPublished
+                      ? <a href="/api/login" className="text-foreground hover:text-primary transition-colors font-medium" data-testid="mobile-link-login">Staff Login</a>
+                      : <span className="text-sm text-muted-foreground" data-testid="mobile-login-unavailable">Staff sign-in pending</span>}
                     <Link href="/logistics/warehouse-forwarding" className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md transition-colors font-medium text-center" data-testid="mobile-button-get-started">Get Started</Link>
                   </>
                 )}
