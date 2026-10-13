@@ -7,6 +7,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { pool } from "./db";
 
 const getOidcConfig = memoize(
   async () => {
@@ -38,12 +39,10 @@ export function getSession() {
   let sessionStore: session.Store | undefined;
   if (process.env.DATABASE_URL) {
     const pgStore = connectPg(session);
-    const dbUrl =
-      process.env.DATABASE_URL?.replace(".us-east-2", "-pooler.us-east-2") ||
-      process.env.DATABASE_URL;
-
+    // Reuse the same portable PostgreSQL pool as customer order storage.
+    // Never rewrite provider hostnames: Supabase uses its own pooler addresses.
     sessionStore = new pgStore({
-      conString: dbUrl,
+      pool,
       createTableIfMissing: false,
       ttl: sessionTtl,
       tableName: "sessions",
