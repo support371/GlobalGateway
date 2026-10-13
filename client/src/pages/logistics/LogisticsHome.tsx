@@ -16,7 +16,7 @@ export default function LogisticsHome() {
           Global Logistics Solutions
         </h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8" data-testid="text-logistics-description">
-          Ship with confidence worldwide. Register purchases and gifts for warehouse receipt, storage, consolidation, and final delivery.
+          Explore domestic carrier tools and managed warehouse forwarding. Actual order registration, rates and international fulfillment depend on operational readiness and provider approvals.
         </p>
         <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center">
           <Button size="lg" asChild>
@@ -38,7 +38,7 @@ export default function LogisticsHome() {
             </Link>
           </Button>
           <Button size="lg" variant="outline" asChild>
-            <Link href="/logistics/book-shipping">Book Now</Link>
+            <Link href="/logistics/book-shipping">Shipping Readiness</Link>
           </Button>
         </div>
       </div>
@@ -51,11 +51,11 @@ export default function LogisticsHome() {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-muted-foreground mb-4">
-              Register purchases and gifts for receipt at the assigned U.S. warehouse suite.
+              Review the assigned U.S. warehouse suite and the readiness of online order intake before sending any parcel.
             </p>
             <Link href="/logistics/warehouse-forwarding">
               <Button className="w-full" data-testid="button-warehouse-forwarding">
-                Create Order
+                Review Forwarding
               </Button>
             </Link>
           </CardContent>
@@ -81,15 +81,15 @@ export default function LogisticsHome() {
         <Card className="hover:shadow-lg transition-shadow" data-testid="card-book-shipping">
           <CardHeader className="text-center">
             <Package className="h-12 w-12 text-primary mx-auto mb-4" />
-            <CardTitle>Book Shipping</CardTitle>
+            <CardTitle>Shipping Requests</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-muted-foreground mb-4">
-              Submit a shipping request for manual review. Labels and delivery are not purchased automatically.
+              Review forwarding and quote options. Direct postage purchasing is not yet enabled.
             </p>
             <Link href="/logistics/book-shipping">
               <Button variant="outline" className="w-full" data-testid="button-book-shipment">
-                Book Shipment
+                View Options
               </Button>
             </Link>
           </CardContent>
@@ -151,7 +151,7 @@ export default function LogisticsHome() {
           <Shield className="h-12 w-12 text-accent mx-auto mb-4" />
           <h3 className="text-xl font-semibold mb-2">Traceable Workflow</h3>
           <p className="text-muted-foreground">
-            Each request receives a GlobalGateway reference and protected status lookup.
+            Confirmed forwarding requests receive an internal GlobalGateway reference and restricted status lookup when secure intake is enabled.
           </p>
         </div>
       </div>
