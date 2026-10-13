@@ -17,6 +17,13 @@ try {
   const port = (server.address() as AddressInfo).port;
   const origin = `http://127.0.0.1:${port}`;
 
+  const capabilities = await fetch(`${origin}/api/platform/capabilities`);
+  assert.equal(capabilities.status, 200);
+  const settings = await capabilities.json() as { loginPublished?: boolean; warehouseMode?: string; shippingQuotesConfigured?: boolean };
+  assert.equal(settings.loginPublished, false, "No production login without explicit approval");
+  assert.equal(settings.warehouseMode, "manual");
+  assert.equal(settings.shippingQuotesConfigured, false, "USPS remains disabled without credentials");
+
   const cfg = await fetch(`${origin}/api/warehouse/config`);
   assert.equal(cfg.status, 200, "Public warehouse config must remain readable");
   const warehouse = await cfg.json() as { suite?: string; mode?: string; apiEnabled?: boolean };
