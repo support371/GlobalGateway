@@ -29,6 +29,19 @@ export async function createApp() {
     next();
   });
 
+  // Non-sensitive UI capability flags. These are visibility gates, not a
+  // substitute for server-side authorization or provider approval.
+  app.get("/api/platform/capabilities", (_req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json({
+      shippingQuotesConfigured: Boolean(process.env.USPS_CLIENT_ID?.trim() && process.env.USPS_CLIENT_SECRET?.trim()),
+      warehouseMode: "manual",
+      loginPublished: process.env.PUBLIC_LOGIN_ENABLED === "true" &&
+        Boolean(process.env.DATABASE_URL && process.env.REPLIT_DOMAINS && process.env.REPL_ID &&
+          process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 32),
+    });
+  });
+
   // Public USPS proxy is independent of database-backed customer orders.
   registerUspsRoutes(app);
 
