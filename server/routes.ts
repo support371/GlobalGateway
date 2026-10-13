@@ -117,16 +117,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/shipments', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const validatedData = insertShipmentSchema.parse({ ...req.body, userId });
-      const shipment = await storage.createShipment(validatedData);
-      res.status(201).json(shipment);
-    } catch (error) {
-      console.error("Error creating shipment:", error);
-      res.status(500).json({ message: "Failed to create shipment" });
-    }
+  // Carrier checkout is not connected. Never accept customer-provided prices
+  // or create a shipment record that looks like a purchased carrier label.
+  app.post('/api/shipments', isAuthenticated, (_req, res) => {
+    return res.status(503).json({
+      code: "CARRIER_BOOKING_NOT_AVAILABLE",
+      message: "Direct carrier booking is not enabled. Request manual forwarding or obtain an authorized carrier quotation.",
+    });
   });
 
   app.patch('/api/shipments/:id', isAuthenticated, async (req: any, res) => {
