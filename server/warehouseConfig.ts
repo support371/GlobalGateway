@@ -22,11 +22,10 @@ export function getWarehouseConfig(): WarehouseConfig {
   const state = process.env.SHIPITO_WAREHOUSE_STATE?.trim() || "CA";
   const postalCode = process.env.SHIPITO_WAREHOUSE_POSTAL_CODE?.trim() || "90503";
   const country = process.env.SHIPITO_WAREHOUSE_COUNTRY?.trim() || "USA";
-  const requestedApiMode = process.env.SHIPITO_MODE?.trim().toLowerCase() === "api";
-  const apiEnabled =
-    requestedApiMode &&
-    process.env.SHIPITO_API_ENABLED === "true" &&
-    Boolean(process.env.SHIPITO_API_KEY?.trim());
+  // A key or environment flag alone is not evidence that a Shipito API adapter
+  // exists or that the account has been approved for automated fulfillment.
+  // Keep the integration in manual mode until a tested adapter is deployed.
+  const apiEnabled = false;
 
   return {
     provider: "shipito",
