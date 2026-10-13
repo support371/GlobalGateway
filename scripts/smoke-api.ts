@@ -24,6 +24,19 @@ try {
   assert.equal(settings.warehouseMode, "manual");
   assert.equal(settings.shippingQuotesConfigured, false, "USPS remains disabled without credentials");
 
+  // An environment key must never claim Shipito automation without an adapter.
+  process.env.SHIPITO_MODE = "api";
+  process.env.SHIPITO_API_ENABLED = "true";
+  process.env.SHIPITO_API_KEY = "fake-test-token-not-a-real-secret";
+  const misleadingConfig = await fetch(`${origin}/api/warehouse/config`);
+  assert.equal(misleadingConfig.status, 200);
+  const misleadingPayload = await misleadingConfig.json() as { mode?: string; apiEnabled?: boolean };
+  assert.equal(misleadingPayload.mode, "manual");
+  assert.equal(misleadingPayload.apiEnabled, false);
+  delete process.env.SHIPITO_API_KEY;
+  process.env.SHIPITO_MODE = "manual";
+  process.env.SHIPITO_API_ENABLED = "false";
+
   const cfg = await fetch(`${origin}/api/warehouse/config`);
   assert.equal(cfg.status, 200, "Public warehouse config must remain readable");
   const warehouse = await cfg.json() as { suite?: string; mode?: string; apiEnabled?: boolean };
